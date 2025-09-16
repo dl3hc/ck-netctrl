@@ -276,3 +276,16 @@ cknetctrl/
 |                            | `send_values(l_value, c_value, highpass)`                             | Sendet Werte an den Tuner, nur wenn sich Werte geändert haben; Debug-Ausgabe optional.                                                           |
 | `backend/utils/network.py` | `ping_icmp(ip, timeout=1.0, attempts=3)`                              | Führt ein klassisches ICMP-Ping durch; unterstützt Windows und Linux.                                                                            |
 |                            | `send_udp(ip, port, data, timeout=1.0)`                               | Sendet ein UDP-Paket an die angegebene IP/Port und gibt True bei Erfolg zurück.
+
+---
+
+## Lizenz
+
+Dieses Projekt ist **Open Source**, lizenziert unter **GPLv3 + Non-Commercial**.  
+
+- **Non-Commercial:** Die Software darf nicht für kommerzielle Zwecke verwendet werden.  
+  Kommerzielle Zwecke schließen den Verkauf, die Lizenzierung oder die Nutzung der Software für bezahlte Dienstleistungen ein.
+- **Copyleft:** Änderungen oder abgeleitete Werke müssen ebenfalls unter dieser Lizenz veröffentlicht werden.
+- **Haftungsausschluss:** Die Software wird ohne jegliche Garantie bereitgestellt.
+
+Für die vollständigen Lizenzbedingungen siehe die [LICENSE-Datei](./LICENSE) im Repository.
