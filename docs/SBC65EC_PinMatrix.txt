@@ -1,0 +1,9 @@
+SBC65EC Pin-Matrix
+
+| Bank / Pin | Funktion | Wertebereich | Beschreibung                      |
+| ---------- | -------- | ------------ | --------------------------------- |
+| **L-Bank** | RA0–RA5  | L1–L6: 0–63  | Schaltet Induktivitätswerte L1–L6 |
+|            | RB0      | L7: 0–127    | Letzter Induktivitätswert         |
+| **C-Bank** | RB1–RB5  | C0–C4: 0–31  | Kapazitätswerte Bits 0–4          |
+|            | RC0–RC2  | C5–C7: 0–7   | Kapazitätswerte Bits 5–7          |
+| **HP**     | RC5      | 0/1          | Highpass (1) / Lowpass (0)        |

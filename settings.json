@@ -1,0 +1,71 @@
+{
+  "frequencies": [
+    {
+      "min_freq": 5350000,
+      "max_freq": 5450000,
+      "L": 32,
+      "C": 42,
+      "highpass": true
+    },
+    {
+      "min_freq": 3550000,
+      "max_freq": 3590000,
+      "L": 4,
+      "C": 167,
+      "highpass": true
+    },
+    {
+      "min_freq": 7000000,
+      "max_freq": 7100000,
+      "L": 11,
+      "C": 35,
+      "highpass": true
+    },
+    {
+      "min_freq": 7100000,
+      "max_freq": 7200000,
+      "L": 10,
+      "C": 34,
+      "highpass": true
+    },
+    {
+      "min_freq": 10100000,
+      "max_freq": 10150000,
+      "L": 14,
+      "C": 52,
+      "highpass": true
+    },
+    {
+      "min_freq": 14000000,
+      "max_freq": 14200000,
+      "L": 6,
+      "C": 12,
+      "highpass": true
+    },
+    {
+      "min_freq": 14200000,
+      "max_freq": 14350000,
+      "L": 9,
+      "C": 68,
+      "highpass": false
+    },
+    {
+      "min_freq": 18068000,
+      "max_freq": 18168000,
+      "L": 4,
+      "C": 15,
+      "highpass": true
+    },
+    {
+      "min_freq": 21000000,
+      "max_freq": 21450000,
+      "L": 1,
+      "C": 11,
+      "highpass": true
+    }
+  ],
+  "sbc_ip": "192.168.2.109",
+  "sbc_port": 54123,
+  "trx_id": 2048,
+  "trx_port": "localhost:19090"
+}
