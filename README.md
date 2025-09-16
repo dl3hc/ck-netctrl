@@ -2,7 +2,7 @@
 
 ## Projektübersicht
 
-Die Christian-Koppler-Control-Software ist eine Desktopanwendung zur Steuerung eines Christian-Kopplers (Antennekoppler) über ein LAN-Interface in Verbindung mit einem Transceiver (TRX), der über CAT (Computer Aided Transceiver) angesprochen wird.
+Die Christian-Koppler-Control-Software ist eine Desktopanwendung zur Steuerung eines Christian-Kopplers (Antennen-Tuner) über ein LAN-Interface in Verbindung mit einem Transceiver (TRX), der über CAT angesprochen wird.
 
 Die Software erlaubt das **automatische Einstellen des Tuners** auf die vom TRX aktuell empfangene Frequenz sowie das **manuelle Setzen und Speichern von L-, C- und Hoch-/Tiefpass-Werten** für bestimmte Frequenzbereiche.
 
@@ -56,8 +56,8 @@ Die Software ist **modular aufgebaut**, um zukünftige Erweiterungen einfach zu 
 - `messages.py`: Nachrichtenerzeugung für L-, C- und HP-Werte.
 - `settings.py`: Verwaltung der Frequenzbereiche, L-, C- und HP-Werte sowie TRX/SBC-Einstellungen.
 - `utils/`
-  - `network.py`: Ping, Socket-Helper, evtl. asynchrones Empfangen.
-  - `sbc65ec.py`: SBC65-spezifische Logik, Debug, Message-Sendelogik.
+  - `network.py`: Ping, send_udp
+  - `sbc65ec.py`: SBC65-spezifische Logik
 
 ### Frontend (GUI)
 - `gui.py`: Hauptfenster der Anwendung mit PyQt6.
@@ -67,11 +67,6 @@ Die Software ist **modular aufgebaut**, um zukünftige Erweiterungen einfach zu 
   - Liste der gespeicherten Einstellungen
   - Setup / Live Modus
   - Reduzierte / Erweiterte Ansicht
-
-### Timer & Events
-- `update_status`: periodisch ausgelöst, um Status und Frequenz zu aktualisieren.
-- Slider-Debounce: Verhindert übermäßige Updates beim Verschieben der Slider.
-- Setup-Modus blockiert die automatische Übernahme durch `update_status`.
 
 ---
 
@@ -84,8 +79,8 @@ Die Software ist **modular aufgebaut**, um zukünftige Erweiterungen einfach zu 
 
 ### Repository klonen
 ```bash
-git clone https://github.com/<dein-repo>/cknetctrl.git
-cd cknetctrl
+git clone https://github.com/dl3hc/ck-netctrl.git
+cd ck-netctrl
 ````
 
 ### Virtuelle Umgebung
@@ -118,8 +113,7 @@ Hier die vollständige Anleitung für Linux (mit Python-Bindings):
 
 ```bash
 sudo apt update
-sudo apt install git build-essential autoconf automake libtool pkg-config \
-                 libusb-1.0-0-dev libhamlib-dev swig python3-dev
+sudo apt install git build-essential autoconf automake libtool pkg-config libusb-1.0-0-dev libhamlib-dev swig python3-dev
 ```
 
 **Erklärung:**
@@ -221,17 +215,15 @@ cknetctrl/
 ├─ gui.py
 ├─ main.py
 ├─ backend/
-│  ├─ __init__.py
 │  ├─ messages.py
 │  ├─ trx.py
 │  ├─ settings.py
 │  └─ utils/
-│     ├─ __init__.py
 │     ├─ network.py
 │     └─ sbc65ec.py
 ├─ docs/
-│  ├─ lc_matrix_tuner.pdf       # Dokumentation zur L-C-Matrix im Tuner
-│  └─ pin_matrix_sbc65ec.pdf   # Dokumentation zur Pin-Matrix am SBC65EC
+│  ├─ lc_matrix_tuner.pdf    
+│  └─ pin_matrix_sbc65ec.pdf
 ```
 
 ---
