@@ -12,64 +12,6 @@ Ziel ist es, sowohl **manuelle Feinabstimmung** als auch **automatisches Arbeite
 
 ---
 
-## Hauptfunktionen
-
-1. **TRX-Status**
-   - Anzeige, ob eine Verbindung zum TRX besteht.
-   - Auslesen der aktuellen Frequenz.
-
-2. **Tuner-Status**
-   - Anzeige, ob der Koppler über LAN erreichbar ist.
-   - Einstellung von L-, C- und Hoch-/Tiefpass-Werten über GUI-Slider und Checkbox.
-
-3. **Setup-Modus**
-   - Ermöglicht das **manuelle Einstellen und Speichern** von Werten für definierte Frequenzbereiche.
-   - Aktiviert die Eingabefelder für Min/Max Frequenz und die Slider/Checkboxen.
-   - Deaktiviert automatische Updates durch den Live-Modus.
-
-4. **Live-Modus**
-   - Übernimmt automatisch die gespeicherten Werte aus der Frequenzliste entsprechend der aktuell vom TRX ausgelesenen Frequenz.
-   - Slider und Checkboxen werden gesperrt, um unbeabsichtigte Änderungen zu verhindern.
-
-5. **Frequenzbereiche / Settings**
-   - Speicherung von unterer und oberer Frequenz, L-Wert, C-Wert und Hoch-/Tiefpass.
-   - Automatisches Laden der Werte, wenn die Frequenz in einem gespeicherten Bereich liegt.
-   - Visualisierung in einer Liste mit Hervorhebung des aktuell aktiven Eintrags.
-   - Speicherung der TRX-Port/Host und SBC-IP/Port Einstellungen.
-
-6. **Reduzierte / Erweiterte Ansicht**
-   - Reduzierte Ansicht: Zeigt nur TRX-Verbindung, Tuner-Verbindung und aktuelle Frequenz.
-   - Erweiterte Ansicht: Zusätzlich Steuerung der Slider, Checkbox, Frequenzbereichseingaben und gespeicherte Einstellungen.
-
-7. **Live-Visualisierung**
-   - Farbige Hervorhebung der aktiven Frequenzbereichs-Einträge.
-   - Anzeige des aktiven Modus (Setup / Live) über visuelle Indikatoren.
-
----
-
-## Software-Architektur / Modularität
-
-Die Software ist **modular aufgebaut**, um zukünftige Erweiterungen einfach zu ermöglichen:
-
-### Backend
-- `trx.py`: Schnittstelle zum Transceiver (über Hamlib oder CAT-DLL).
-- `messages.py`: Nachrichtenerzeugung für L-, C- und HP-Werte.
-- `settings.py`: Verwaltung der Frequenzbereiche, L-, C- und HP-Werte sowie TRX/SBC-Einstellungen.
-- `utils/`
-  - `network.py`: Ping, send_udp
-  - `sbc65ec.py`: SBC65-spezifische Logik
-
-### Frontend (GUI)
-- `gui.py`: Hauptfenster der Anwendung mit PyQt6.
-  - Statusanzeigen (TRX, Tuner, Frequenz)
-  - Slider für L/C, Checkbox für HP
-  - Eingabefelder für Frequenzbereiche
-  - Liste der gespeicherten Einstellungen
-  - Setup / Live Modus
-  - Reduzierte / Erweiterte Ansicht
-
----
-
 ## Schnellstart-Anleitung
 
 ### Voraussetzungen
@@ -204,9 +146,69 @@ python main.py
 
 * TRX und SBC-IP/Port können direkt eingegeben werden.
 * Setup-Modus aktivieren → Werte eintragen → Speichern.
-* Live-Modus aktivieren → automatische Übernahme der Werte.
+* Setup-Modus deaktivieren → automatische Übernahme der Werte.
 
 ---
+
+## Hauptfunktionen
+
+1. **TRX-Status**
+   - Anzeige, ob eine Verbindung zum TRX besteht.
+   - Auslesen der aktuellen Frequenz.
+
+2. **Tuner-Status**
+   - Anzeige, ob der Koppler über LAN erreichbar ist.
+   - Einstellung von L-, C- und Hoch-/Tiefpass-Werten über GUI-Slider und Checkbox.
+
+3. **Setup-Modus**
+   - Ermöglicht das **manuelle Einstellen und Speichern** von Werten für definierte Frequenzbereiche.
+   - Aktiviert die Eingabefelder für Min/Max Frequenz und die Slider/Checkboxen.
+   - Deaktiviert automatische Updates durch den Live-Modus.
+
+4. **Live-Modus**
+   - Übernimmt automatisch die gespeicherten Werte aus der Frequenzliste entsprechend der aktuell vom TRX ausgelesenen Frequenz.
+   - Slider und Checkboxen werden gesperrt, um unbeabsichtigte Änderungen zu verhindern.
+
+5. **Frequenzbereiche / Settings**
+   - Speicherung von unterer und oberer Frequenz, L-Wert, C-Wert und Hoch-/Tiefpass.
+   - Automatisches Laden der Werte, wenn die Frequenz in einem gespeicherten Bereich liegt.
+   - Visualisierung in einer Liste mit Hervorhebung des aktuell aktiven Eintrags.
+   - Speicherung der TRX-Port/Host und SBC-IP/Port Einstellungen.
+
+6. **Reduzierte / Erweiterte Ansicht**
+   - Reduzierte Ansicht: Zeigt nur TRX-Verbindung, Tuner-Verbindung und aktuelle Frequenz.
+   - Erweiterte Ansicht: Zusätzlich Steuerung der Slider, Checkbox, Frequenzbereichseingaben und gespeicherte Einstellungen.
+
+7. **Live-Visualisierung**
+   - Farbige Hervorhebung der aktiven Frequenzbereichs-Einträge.
+   - Anzeige des aktiven Modus (Setup / Live) über visuelle Indikatoren.
+
+---
+
+## Software-Architektur / Modularität
+
+Die Software ist **modular aufgebaut**, um zukünftige Erweiterungen einfach zu ermöglichen:
+
+### Backend
+- `trx.py`: Schnittstelle zum Transceiver (über Hamlib oder CAT-DLL).
+- `messages.py`: Nachrichtenerzeugung für L-, C- und HP-Werte.
+- `settings.py`: Verwaltung der Frequenzbereiche, L-, C- und HP-Werte sowie TRX/SBC-Einstellungen.
+- `utils/`
+  - `network.py`: Ping, send_udp
+  - `sbc65ec.py`: SBC65-spezifische Logik
+
+### Frontend (GUI)
+- `gui.py`: Hauptfenster der Anwendung mit PyQt6.
+  - Statusanzeigen (TRX, Tuner, Frequenz)
+  - Slider für L/C, Checkbox für HP
+  - Eingabefelder für Frequenzbereiche
+  - Liste der gespeicherten Einstellungen
+  - Setup / Live Modus
+  - Reduzierte / Erweiterte Ansicht
+
+---
+
+
 
 ## Projektstruktur
 
