@@ -1,5 +1,8 @@
 # Christian-Koppler Control Software
 
+![Christian-Koppler Control Software](screenshots/ck-netctrl_gui.png)
+
+
 ## Projektübersicht
 
 Die Christian-Koppler-Control-Software ist eine Desktopanwendung zur Steuerung eines Christian-Kopplers (Antennen-Tuner) über ein LAN-Interface in Verbindung mit einem Transceiver (TRX), der über CAT angesprochen wird.
