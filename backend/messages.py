@@ -27,11 +27,36 @@
 
 def build_messages(val_l: int, val_c: int, highpass: bool):
     """
-    Baut alle Nachrichten für den SBC65EC basierend auf L, C und Hoch/Tiefpass.
-    val_l: 0–127 (L-Bank)
-    val_c: 0–255 (C-Bank)
-    highpass: True = Highpass, False = Tiefpass
+    Build all control messages for the SBC65EC based on L, C values and filter type.
+
+    This function generates four separate byte messages that encode the state of 
+    L-bank (val_l), C-bank (val_c), and the highpass/lowpass filter setting.
+    Each message is structured as a series of 5-byte sequences, where the first 
+    byte indicates the message group ('a', 'b', 'c'), the second byte the channel 
+    number, the third is '=', the fourth is '1' or '0' depending on the bit value, 
+    and the fifth is '&' as a delimiter.
+
+    Parameters:
+    -----------
+    val_l : int
+        L-bank value (0–127) representing channels L1–L7. Each bit corresponds 
+        to a channel state (1 = on, 0 = off).
+    val_c : int
+        C-bank value (0–255) representing channels C0–C7. Each bit corresponds 
+        to a channel state (1 = on, 0 = off).
+    highpass : bool
+        Filter type: True = Highpass, False = Lowpass.
+
+    Returns:
+    --------
+    tuple[bytes, bytes, bytes, bytes]
+        A tuple containing four messages as bytes:
+        - msg_a: L-bank channels L1–L6
+        - msg_b: last L value (L7) + C0–C4
+        - msg_c1: C5–C7 channels
+        - msg_c2: Highpass/Lowpass flag (RC5)
     """
+
 
     # --- msg_a: L-Bank L1-L6 (RA0-RA5) ---
     msg_a = bytearray(6 * 5)  # 6 Kanäle, je 5 Bytes

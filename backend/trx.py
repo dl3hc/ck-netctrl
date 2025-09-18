@@ -31,23 +31,43 @@ class TRX:
     def __init__(self, rig_id=None, port="localhost:19090", baudrate=115200,
                  databits=8, parity='N', stopbits=1, dummy=False):
         """
-        TRX Interface via Hamlib (seriell oder Netzwerk) oder Dummy-Modus.
+        Initializes a TRX object for accessing a transceiver.
+
+        Supports real devices via Hamlib (serial or network) or a dummy mode
+        for testing purposes.
+
+        Args:
+            rig_id (int, optional): Hamlib rig ID. Default: 2048 (FlexRadio/PowerSDR).
+            port (str, optional): COM port or network address of the TRX. Default: "localhost:19090".
+            baudrate (int, optional): Baud rate for serial connection. Default: 115200.
+            databits (int, optional): Number of data bits for serial connection. Default: 8.
+            parity (str, optional): Parity for serial connection ('N', 'E', 'O'). Default: 'N'.
+            stopbits (int, optional): Number of stop bits for serial connection. Default: 1.
+            dummy (bool, optional): Enables dummy mode without real hardware. Default: False.
+
+        Attributes:
+            dummy (bool): Indicates if dummy mode is active.
+            connected (bool): True if the TRX is connected.
+            _freq (int): Current frequency in dummy mode (Hz).
+            rig (Hamlib.Rig): Hamlib rig object (only if dummy=False).
+            rig_id (int): Hamlib rig ID.
+            port (str): Connection port.
         """
         self.dummy = dummy
         self.connected = False
-        self._freq = 5351000  # Dummy Start-Frequenz 5.351 MHz
+        self._freq = 5351000  # Dummy start frequency 5.351 MHz
 
         Hamlib.rig_set_debug(Hamlib.RIG_DEBUG_NONE)
 
         if not self.dummy:
-            # Rig-ID standardmäßig auf FlexRadio/PowerSDR, falls None
+            # Default rig ID to FlexRadio/PowerSDR if None
             self.rig_id = rig_id if rig_id is not None else 2048
             self.rig = Hamlib.Rig(self.rig_id)
             self.port = port
             self.rig.set_conf("rig_pathname", port)
             
-            # Serielle Einstellungen nur bei echten COM-Ports
-            if ":" not in port:  # Netzwerkport enthält ":"
+            # Serial settings only for real COM ports
+            if ":" not in port:  # Network port contains ":"
                 self.rig.set_conf("baudrate", str(baudrate))
                 self.rig.set_conf("data_bits", str(databits))
                 self.rig.set_conf("parity", parity)
@@ -55,8 +75,14 @@ class TRX:
 
     @staticmethod
     def list_available_rigs():
-        """Gibt eine Liste aller bekannten Hamlib-Rigs zurück,
-        wobei der Präfix 'RIG_MODEL_' entfernt wird."""
+        """
+        Returns a list of all rigs known to Hamlib.
+
+        The prefix 'RIG_MODEL_' is removed from the names.
+
+        Returns:
+            list of tuple: List of (name, Hamlib rig ID)
+        """
         rig_models = [
             (name.replace("RIG_MODEL_", ""), getattr(Hamlib, name))
             for name in dir(Hamlib)
@@ -64,10 +90,15 @@ class TRX:
         ]
         return rig_models
 
-
-
     def connect(self):
-        """Öffnet die Verbindung zum Transceiver (oder Dummy)"""
+        """
+        Opens the connection to the transceiver.
+
+        In dummy mode, the connection is simulated.
+
+        Raises:
+            Exception: If connection to a real TRX fails.
+        """
         if self.dummy:
             self.connected = True
             print("Dummy TRX connected")
@@ -78,34 +109,52 @@ class TRX:
                 print(f"TRX connected: {self.port}")
             except Exception as e:
                 self.connected = False
-                print(f"Fehler beim TRX connect: {e}")
+                print(f"Error connecting to TRX: {e}")
 
     def get_frequency(self):
-        """Liest die aktuelle Frequenz aus"""
+        """
+        Reads the current frequency from the TRX.
+
+        Returns:
+            int: Frequency in Hz (dummy mode: stored dummy frequency)
+            None: On error reading frequency.
+        
+        Raises:
+            RuntimeError: If TRX is not connected.
+        """
         if self.dummy:
             return self._freq
         else:
             if not self.connected:
-                raise RuntimeError("TRX nicht verbunden")
+                raise RuntimeError("TRX not connected")
             try:
                 freq = self.rig.get_freq()
                 return freq
             except Exception as e:
-                print(f"Fehler beim Auslesen der Frequenz: {e}")
+                print(f"Error reading frequency: {e}")
                 return None
 
     def close(self):
-        """Schließt die Verbindung"""
+        """
+        Closes the connection to the TRX.
+
+        Does nothing in dummy mode.
+        """
         if not self.dummy and self.connected:
             self.rig.close()
             self.connected = False
             print("TRX connection closed")
 
-def main():
-    rigs = TRX.list_available_rigs()
-    print("Gefundene Rigs:")
-    for name, rig_id in rigs:
-        print(f"- {name}: {rig_id}")
 
-if __name__ == "__main__":
-    main()
+# def main():
+#     """
+#     Testet die TRX-Klasse, indem alle verfügbaren Rigs aufgelistet werden.
+#     """
+#     rigs = TRX.list_available_rigs()
+#     print("Gefundene Rigs:")
+#     for name, rig_id in rigs:
+#         print(f"- {name}: {rig_id}")
+# 
+# if __name__ == "__main__":
+#     main()
+# 

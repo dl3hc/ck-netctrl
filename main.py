@@ -25,12 +25,36 @@
 #    available under this license.
 # -----------------------------------------------------------------------------
 
+"""
+Main entry point for the Christian-Koppler Control Software (ck-netctrl).
+
+This module initializes the Qt application and launches the main GUI window.
+
+Usage:
+    python main.py
+
+Modules:
+    gui: Contains the MainWindow class for the GUI.
+"""
+
 from PyQt6.QtWidgets import QApplication
 from gui import MainWindow
 import sys
 
-if __name__ == "__main__":
+def main():
+    """
+    Initializes and runs the Qt application.
+
+    This function:
+    1. Creates a QApplication instance.
+    2. Instantiates the MainWindow.
+    3. Shows the main window.
+    4. Starts the Qt event loop.
+    """
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
+
+if __name__ == "__main__":
+    main()

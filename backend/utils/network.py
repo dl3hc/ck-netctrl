@@ -32,23 +32,32 @@ from shutil import which
 
 def ping_icmp(ip: str, timeout: float = 1.0, attempts: int = 3) -> bool:
     """
-    Führt ein klassisches ICMP-Ping durch.
-    Windows: ping-Binary oder socket-basiert.
-    Linux: /bin/ping Binary, ohne Root funktioniert es, wenn Paketgröße angepasst wird.
+    Performs a standard ICMP ping to a target IP address.
+    
+    On Windows, it uses the system ping binary or socket-based approach.
+    On Linux, it uses /bin/ping. Works without root privileges if packet size is adjusted.
+
+    Args:
+        ip (str): The target IP address to ping.
+        timeout (float, optional): Timeout for each ping attempt in seconds. Defaults to 1.0.
+        attempts (int, optional): Number of ping attempts. Defaults to 3.
+
+    Returns:
+        bool: True if the host responds to ping within the given attempts, False otherwise.
     """
     system = platform.system().lower()
     count_flag = "-n" if system == "windows" else "-c"
     timeout_flag = "-w" if system == "windows" else "-W"
     
-    # Timeout: Windows -> ms, Linux -> Sekunden (float)
+    # Timeout: Windows -> ms, Linux -> seconds (float)
     timeout_value = int(timeout * 1000) if system == "windows" else timeout
 
-    # Ping-Binary finden
+    # Locate ping binary
     ping_bin = which("ping") or ("/bin/ping" if system != "windows" else "ping")
 
-    # Paketgröße unter Linux anpassen, damit Geräte wie SBC65EC erreichbar sind
+    # Adjust packet size for Linux to reach certain devices like SBC65EC
     size_flag = "-l" if system == "windows" else "-s"
-    packet_size = "32" if system != "windows" else "32"  # Windows standard 32 Bytes
+    packet_size = "32" if system != "windows" else "32"  # Windows default 32 bytes
 
     for _ in range(attempts):
         try:
@@ -71,7 +80,18 @@ def ping_icmp(ip: str, timeout: float = 1.0, attempts: int = 3) -> bool:
     return False
 
 def send_udp(ip: str, port: int, data: bytes, timeout=1.0) -> bool:
-    """Sendet ein UDP-Paket, gibt True bei Erfolg zurück."""
+    """
+    Sends a UDP packet to a specified IP and port.
+
+    Args:
+        ip (str): Target IP address.
+        port (int): Target UDP port.
+        data (bytes): Data payload to send.
+        timeout (float, optional): Socket timeout in seconds. Defaults to 1.0.
+
+    Returns:
+        bool: True if the packet was sent successfully, False otherwise.
+    """
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
             sock.settimeout(timeout)

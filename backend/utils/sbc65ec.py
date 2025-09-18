@@ -30,12 +30,22 @@ from backend.utils import network
 
 class SBC65EC:
     """
-    Steuerung des SBC65EC Tuners über UDP.
-    - Erreichbarkeit prüfen
-    - Werte (L, C, HP) senden
+    Controller for the SBC65EC tuner over UDP.
+
+    Provides methods to:
+    - Check device reachability
+    - Send tuning values (L, C, Highpass)
     """
 
     def __init__(self, host: str = "10.1.0.1", port: int = 54123, debug: bool = False):
+        """
+        Initialize the SBC65EC controller.
+
+        Args:
+            host (str): IP address of the SBC65EC device. Defaults to "10.1.0.1".
+            port (int): UDP port used for communication. Defaults to 54123.
+            debug (bool): Enable debug output. Defaults to False.
+        """
         self.host = host
         self.port = port
         self.debug = debug
@@ -45,25 +55,44 @@ class SBC65EC:
         self.last_c_value = -1
         self.last_hp_value = None
 
-    # --- Erreichbarkeit prüfen ---
+    # --- Check device reachability ---
     def check_reachability(self, timeout: float = 0.5) -> bool:
-        """Prüft, ob der SBC65EC erreichbar ist (per ICMP)."""
+        """
+        Check if the SBC65EC device is reachable via ICMP ping.
+
+        Args:
+            timeout (float): Maximum time to wait for a response in seconds. Defaults to 0.5.
+
+        Returns:
+            bool: True if the device responds to ping, False otherwise.
+        """
         self.reachable = network.ping_icmp(self.host, timeout=timeout)
         if self.debug:
             if self.reachable:
-                print(f"[INFO] SBC65EC {self.host}:{self.port} ist erreichbar")
+                print(f"[INFO] SBC65EC {self.host}:{self.port} is reachable")
             else:
-                print(f"[WARN] SBC65EC {self.host}:{self.port} nicht erreichbar")
+                print(f"[WARN] SBC65EC {self.host}:{self.port} is not reachable")
         return self.reachable
 
-    # --- Werte senden ---
+    # --- Send tuning values ---
     def send_values(self, l_value: int, c_value: int, highpass: bool):
+        """
+        Send tuning values (L, C, Highpass) to the SBC65EC device over UDP.
+
+        Only sends values if they have changed since the last transmission
+        and if the device is reachable.
+
+        Args:
+            l_value (int): Inductance value to set.
+            c_value (int): Capacitance value to set.
+            highpass (bool): Whether the highpass filter is enabled.
+        """
         if not self.reachable:
             if self.debug:
-                print("[DEBUG] Tuner nicht erreichbar → Werte nicht gesendet")
+                print("[DEBUG] Device not reachable → values not sent")
             return
 
-        # Nur senden, wenn Werte sich geändert haben
+        # Only send if values have changed
         if (l_value == self.last_l_value and
             c_value == self.last_c_value and
             highpass == self.last_hp_value):
@@ -73,12 +102,12 @@ class SBC65EC:
         self.last_c_value = c_value
         self.last_hp_value = highpass
 
-        # Nachrichten aufbauen
+        # Build messages
         msg_a, msg_b, msg_c1, msg_c2 = build_messages(l_value, c_value, highpass)
         full_msg = msg_a + msg_b + msg_c1 + msg_c2
 
         if self.debug:
-            print(f"[DEBUG] Sende an SBC65EC {self.host}:{self.port}")
-            print(f"  Nachricht: {full_msg.decode(errors='ignore')}")
+            print(f"[DEBUG] Sending to SBC65EC {self.host}:{self.port}")
+            print(f"  Message: {full_msg.decode(errors='ignore')}")
 
         network.send_udp(self.host, self.port, full_msg)

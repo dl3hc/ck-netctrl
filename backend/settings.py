@@ -29,9 +29,27 @@ import json
 import os
 
 class Settings:
+    """
+    Manages the configuration settings for the Christian-Koppler Control Software.
+
+    Attributes:
+        filename (str): Path to the JSON settings file.
+        data (list): List of frequency entries.
+        sbc_ip (str): IP address of the SBC (Single Board Computer).
+        sbc_port (int): Port of the SBC.
+        trx_id (str|None): ID of the transceiver.
+        trx_port (str): Address of the transceiver.
+    """
+
     def __init__(self, filename="settings.json"):
+        """
+        Initializes the Settings object and loads settings from a file.
+
+        Args:
+            filename (str): Optional path to the JSON settings file. Defaults to "settings.json".
+        """
         self.filename = filename
-        self.data = []       # Frequenz-Einträge
+        self.data = []       # Frequency entries
         self.sbc_ip = "10.1.0.1"
         self.sbc_port = 54123
         self.trx_id = None
@@ -39,6 +57,9 @@ class Settings:
         self.load()
 
     def load(self):
+        """
+        Loads settings from the JSON file. If the file does not exist, defaults are used.
+        """
         try:
             with open(self.filename, "r") as f:
                 obj = json.load(f)
@@ -51,11 +72,20 @@ class Settings:
             self.data = []
 
     def load_from_json(self, filename=None):
+        """
+        Loads settings from a specified JSON file.
+
+        Args:
+            filename (str|None): Optional path to a JSON file. If None, uses the current filename.
+        """
         if filename:
             self.filename = filename
         self.load()
 
     def save(self):
+        """
+        Saves the current settings to the JSON file.
+        """
         obj = {
             "frequencies": self.data,
             "sbc_ip": self.sbc_ip,
@@ -63,18 +93,36 @@ class Settings:
             "trx_id": self.trx_id,
             "trx_port": self.trx_port
         }
-        print(">>> Speichere nach:", os.path.abspath(self.filename))
+        print(">>> Saving to:", os.path.abspath(self.filename))
         with open(self.filename, "w") as f:
             json.dump(obj, f, indent=2)
 
-
     def get_for_frequency(self, freq):
+        """
+        Retrieves the settings entry corresponding to a specific frequency.
+
+        Args:
+            freq (float): The frequency to search for.
+
+        Returns:
+            dict|None: The matching frequency entry if found, otherwise None.
+        """
         for entry in self.data:
             if entry["min_freq"] <= freq <= entry["max_freq"]:
                 return entry
         return None
 
     def add_entry(self, min_freq, max_freq, L, C, highpass):
+        """
+        Adds a new frequency entry to the settings.
+
+        Args:
+            min_freq (float): Minimum frequency of the entry.
+            max_freq (float): Maximum frequency of the entry.
+            L (float): Inductance value for the entry.
+            C (float): Capacitance value for the entry.
+            highpass (bool): Indicates if the entry uses a high-pass filter.
+        """
         self.data.append({
             "min_freq": min_freq,
             "max_freq": max_freq,
