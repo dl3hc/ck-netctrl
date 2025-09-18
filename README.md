@@ -17,15 +17,54 @@ The goal is to provide both **manual fine-tuning** and **automatic operation in 
 
 ## Origin of the Concept
 
-The basic concept for controlling the Christian-Koppler over a LAN interface with the **SBC65EC** module was developed by the **DARC e.V. local chapter Leichlingen-Langenfeld (R25)** and published by its members  
-([R25 PC-controlled Christian-Tuner Interface](http://r25.de/index.php/r25-pc-gesteuertes-christian-tuner-interface)).
+The basic concept for controlling the Christian-Koppler over a LAN interface with the **SBC65EC** module was developed by the **DARC e.V. local chapter Leichlingen-Langenfeld (R25)** and published by its members ([R25 PC-controlled Christian-Tuner Interface](http://r25.de/index.php/r25-pc-gesteuertes-christian-tuner-interface)).
 
-The software presented here, **„ck-netctrl“**, is an independent implementation in Python. It is based on the concept developed by R25, but the code has been fully rewritten and is open-source. It is exclusively designed for controlling and automating the Christian-Koppler only.
-
+The software presented here, **„ck-netctrl“**, is an independent Python implementation following the R25 concept only in terms of system design and hardware interface. It is written from scratch and follows the spirit of open-source as ham radio should be.
 
 ---
 
-## Quick Start Guide
+## SBC65EC Initial Setup
+
+Before using the SBC65EC module to control the Christian-Koppler automatically via PC, the module must be configured. The following instructions guide through the **initial network and port configuration**.  
+
+### Overview
+
+The Tuner Interface receives the required control signals from the PC over a standard LAN cable. It consists of a pre-assembled **SBC65EC** module from [Modtronix](https://modtronix.com/product/sbc65ec/) with relay driver chips that switch the L and C relays in the Christian Tuner box.  
+
+- The SBC65EC acts as a network device with its **own IP address**.  
+- **Factory default IP:** `10.1.0.1`  
+- You need to adjust the IP to match your PC network for proper communication.  
+
+### Hardware Setup
+
+- The SBC65EC module has **two 20-pin headers** on top.  
+- A [PCB](https://github.com/dl3hc/ck-netctrl-hw) with relay driver chips is connected via these headers.  
+- Relay outputs are constantly supplied with 13.8 V and are switched to 0 V by the driver chips.  
+- A 25-wire cable connects the outputs to the Christian-Koppler box.  
+- The module replaces the original Tuner control panel.
+
+### Network Configuration
+
+1. Connect the SBC65EC to the PC via a **direct LAN cable (1:1)** for initial setup.  
+   - If a router or switch is used, a **crossover cable** may be needed depending on the device.  
+2. Access the module via a **web browser** (Internet Explorer, Firefox) using the **default IP `10.1.0.1`**.  
+3. Log in with the **username and password** provided by the module documentation.  
+4. Navigate to **System Configuration → Network Settings**.  
+5. Adjust **IP address, subnet mask, and gateway** according to your PC/network.  
+6. Click **Update** to save changes.  
+7. **Power-cycle the module** for settings to take effect.  
+8. Verify connectivity with a `ping` command from the PC.
+
+### Port Configuration
+
+- All ports must be set as **outputs** to drive the relays.  
+- For standard operation, set the following ports as output:  
+  - `A0-A5`, `B0-B5`, `C0-C2`, `C5`, `F0-F4`  
+- Click **Submit** to save the port settings.
+
+---
+
+## "ck-netctrl" - Quick Start Guide 
 
 ### Requirements
 - Python 3.10+  
@@ -238,8 +277,8 @@ cknetctrl/
 │     ├─ network.py
 │     └─ sbc65ec.py
 ├─ docs/
-│  ├─ lc_matrix_tuner.pdf    
-│  └─ pin_matrix_sbc65ec.pdf
+│  ├─ L_C_Matrix.ods    
+│  └─ SBC65EC_PinMatrix.txt
 ```
 
 ---
