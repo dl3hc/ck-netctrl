@@ -29,7 +29,7 @@ Before using the SBC65EC module to control the Christian-Koppler automatically v
 
 ### Overview
 
-The Tuner Interface receives the required control signals from the PC over a standard LAN cable. It consists of a pre-assembled **SBC65EC** module from [Modtronix](https://modtronix.com/product/sbc65ec/) with relay driver chips that switch the L and C relays in the Christian Tuner box.  
+The Tuner Interface receives the required control signals from the PC via LAN. It consists of a pre-assembled **SBC65EC** module from [Modtronix](https://modtronix.com/product/sbc65ec/) with a daughterboard that hosts **ULN2003 relay driver chips**, which switch the L, C and High/Lowpass relays in the Christian Tuner box.  
 
 - The SBC65EC acts as a network device with its **own IP address**.  
 - **Factory default IP:** `10.1.0.1`  
@@ -38,10 +38,11 @@ The Tuner Interface receives the required control signals from the PC over a sta
 ### Hardware Setup
 
 - The SBC65EC module has **two 20-pin headers** on top.  
-- A [PCB](https://github.com/dl3hc/ck-netctrl-hw) with relay driver chips is connected via these headers.  
+- A [daughterboard](https://github.com/dl3hc/ck-netctrl-hw) with **ULN2003 relay driver chips** is mounted via these headers.  
 - Relay outputs are constantly supplied with 13.8 V and are switched to 0 V by the driver chips.  
 - A 25-wire cable connects the outputs to the Christian-Koppler box.  
-- The module replaces the original Tuner control panel.
+- This module replaces the original Tuner control panel.
+
 
 ### Network Configuration
 
