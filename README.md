@@ -242,7 +242,7 @@ The software is **modular**, allowing future extensions:
 
 ### Backend
 
-* `trx.py`: Interface to the transceiver (via Hamlib or CAT DLL).
+* `trx.py`: Interface to the transceiver (via Hamlib).
 * `messages.py`: Builds messages for L, C, and HP values.
 * `settings.py`: Manages frequency ranges, L, C, HP values, and TRX/SBC settings.
 * `utils/`
