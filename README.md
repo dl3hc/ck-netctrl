@@ -186,7 +186,7 @@ No errors indicate the Python bindings are correctly installed.
 ### Launch the Application
 
 ```bash
-python main.py
+(.venv)python3 main.py
 ```
 
 * Enter TRX and SBC IP/Port directly in the GUI.
