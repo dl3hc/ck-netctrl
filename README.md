@@ -1,98 +1,106 @@
+
 # Christian-Koppler Control Software
 
 ![Christian-Koppler Control Software](screenshots/ck-netctrl_gui.png)
 
+## Project Overview
 
-## Projektübersicht
+The Christian-Koppler Control Software is a desktop application for controlling a Christian-Koppler (antenna tuner) over a LAN interface in conjunction with a transceiver (TRX) using CAT commands.
 
-Die Christian-Koppler-Control-Software ist eine Desktopanwendung zur Steuerung eines Christian-Kopplers (Antennen-Tuner) über ein LAN-Interface in Verbindung mit einem Transceiver (TRX), der über CAT angesprochen wird.
+The software allows **automatic tuning** according to the frequency currently received by the TRX, as well as **manual setting and saving of L, C, and high/low-pass values** for specific frequency ranges.
 
-Die Software erlaubt das **automatische Einstellen des Tuners** auf die vom TRX aktuell empfangene Frequenz sowie das **manuelle Setzen und Speichern von L-, C- und Hoch-/Tiefpass-Werten** für bestimmte Frequenzbereiche.
+The hardware interface to the tuner uses the **[SBC65EC](https://modtronix.com/product/sbc65ec/)** module from Modtronix.
 
-Ziel ist es, sowohl **manuelle Feinabstimmung** als auch **automatisches Arbeiten im Live-Betrieb** komfortabel zu ermöglichen.
+The goal is to provide both **manual fine-tuning** and **automatic operation in live mode** in a convenient way.
 
-> **Hinweis:** Das Programm ist aktuell **nur unter Linux getestet und lauffähig**, da Hamlib bisher noch nicht erfolgreich unter Windows kompiliert werden konnte.
+> **Note:** The software is currently **tested and functional only on Linux**, as Hamlib has not yet been successfully compiled on Windows.
+
+## Origin of the Concept
+
+The basic concept for controlling the Christian-Koppler over a LAN interface with the **SBC65EC** module was developed by the **DARC e.V. local chapter Leichlingen-Langenfeld (R25)** and published by its members  
+([R25 PC-controlled Christian-Tuner Interface](http://r25.de/index.php/r25-pc-gesteuertes-christian-tuner-interface)).
+
+The software presented here, **„ck-netctrl“**, is an independent implementation in Python. It is based on the concept developed by R25, but the code has been fully rewritten and is open-source. It is exclusively designed for controlling and automating the Christian-Koppler only.
+
 
 ---
 
-## Schnellstart-Anleitung
+## Quick Start Guide
 
-### Voraussetzungen
+### Requirements
 - Python 3.10+  
 - PyQt6
-- [Hamlib](https://github.com/Hamlib/Hamlib) (nur unter Linux getestet)
+- [Hamlib](https://github.com/Hamlib/Hamlib) (tested on Linux only)
 
-### Repository klonen
+### Clone the Repository
 ```bash
 git clone https://github.com/dl3hc/ck-netctrl.git
 cd ck-netctrl
 ````
 
-### Virtuelle Umgebung
+### Virtual Environment
 
 ```bash
 python3 -m venv venv
 source venv/bin/activate  # Linux/macOS
-venv\Scripts\activate     # Windows (nicht getestet)
+venv\Scripts\activate     # Windows (not tested)
 ```
 
-### Python-Abhängigkeiten installieren
+### Install Python Dependencies
 
 ```bash
 pip install --upgrade pip
 pip install PyQt6
 ```
+
 ---
 
-### Hamlib installieren / kompilieren
+### Install / Compile Hamlib
 
-* TRX-Kommunikation erfolgt über Hamlib.
-* Linux: Kompilieren von Hamlib mit aktivierten Python-Bindings.
-* Windows: Aktuell noch nicht möglich.
+* TRX communication is handled via Hamlib.
+* Linux: Compile Hamlib with Python bindings enabled.
+* Windows: Currently not possible.
 
-Die TRX-Kommunikation erfolgt über Hamlib.
-Hier die vollständige Anleitung für Linux (mit Python-Bindings):
+Steps for Linux:
 
-
-#### Systemabhängige Pakete installieren
+#### Install System Dependencies
 
 ```bash
 sudo apt update
 sudo apt install git build-essential autoconf automake libtool pkg-config libusb-1.0-0-dev libhamlib-dev swig python3-dev
 ```
 
-**Erklärung:**
+**Explanation:**
 
-* `libhamlib-dev` → Hamlib-Header und Bibliothek
-* `swig` → erzeugt die Python-Bindings aus C-Code
-* `python3-dev` → Header-Dateien für Python-Entwicklung
+* `libhamlib-dev` → Hamlib headers and library
+* `swig` → generates Python bindings from C code
+* `python3-dev` → Python development headers
 
 ---
 
-#### Hamlib-Quellcode herunterladen
+#### Download Hamlib Source
 
 ```bash
 git clone https://github.com/Hamlib/Hamlib
 cd Hamlib
 ```
 
-Falls direkt aus Git geklont: Build-System initialisieren:
+If cloned directly from Git, initialize the build system:
 
 ```bash
 ./bootstrap
 ```
 
-> Bei Source-Releases entfällt dieser Schritt.
+> Skip this step for source releases.
 
-#### Aktiviere deine virtuelle Umgebung:
+#### Activate your virtual environment:
 
 ```bash
 source .venv/bin/activate
-which python3   # sollte VIRTUAL_ENV/bin/python3 anzeigen
+which python3   # should point to VIRTUAL_ENV/bin/python3
 ```
----
 
-#### Hamlib konfigurieren (Out-of-Tree Build)
+#### Configure Hamlib (Out-of-Tree Build)
 
 ```bash
 mkdir ../hamlib-build
@@ -100,19 +108,17 @@ cd ../hamlib-build
 ../Hamlib/configure --with-python-binding PYTHON="$VIRTUAL_ENV/bin/python3" --prefix="$VIRTUAL_ENV"
 ```
 
-> `PYTHON=$(which python3)` nutzt die aktuelle Python-Version.
-> `--prefix=$VIRTUAL_ENV` installiert alles in der aktiven venv (kein Root nötig).
+> `PYTHON=$(which python3)` uses the current Python version.
+> `--prefix=$VIRTUAL_ENV` installs everything in the active venv (no root needed).
 
----
-
-#### Build & Installation
+#### Build & Install
 
 ```bash
 make -j$(nproc)
 make install
 ```
 
-Wechsle anschließend in den `bindings`-Ordner:
+Then go to the `bindings` folder:
 
 ```bash
 cd ../Hamlib/bindings
@@ -120,100 +126,105 @@ make
 make install
 ```
 
-Danach sollten in deiner virtuellen Umgebung erscheinen:
+After this, your virtual environment should contain:
 
 ```
 $VIRTUAL_ENV/lib/python3.12/site-packages/Hamlib.py
 $VIRTUAL_ENV/lib/python3.12/site-packages/_Hamlib.so
 ```
 
----
-
-#### Testen der Installation
+#### Test the Installation
 
 ```bash
 (.venv)python3 -c "import Hamlib; print(Hamlib)"
 ```
 
-Wenn keine Fehlermeldung erscheint, sind die Python-Bindings korrekt installiert.
+No errors indicate the Python bindings are correctly installed.
 
 ---
 
-
-
-### Anwendung starten
+### Launch the Application
 
 ```bash
 python main.py
 ```
 
-* TRX und SBC-IP/Port können direkt eingegeben werden.
-* Setup-Modus aktivieren → Werte eintragen → Speichern.
-* Setup-Modus deaktivieren → automatische Übernahme der Werte.
+* Enter TRX and SBC IP/Port directly in the GUI.
+* Enable setup mode → input values → save.
+* Disable setup mode → values are automatically applied.
 
 ---
 
-## Hauptfunktionen
+## Main Features
 
-1. **TRX-Status**
-   - Anzeige, ob eine Verbindung zum TRX besteht.
-   - Auslesen der aktuellen Frequenz.
+1. **TRX Status**
 
-2. **Tuner-Status**
-   - Anzeige, ob der Koppler über LAN erreichbar ist.
-   - Einstellung von L-, C- und Hoch-/Tiefpass-Werten über GUI-Slider und Checkbox.
+   * Displays whether a connection to the TRX exists.
+   * Reads the current frequency.
 
-3. **Setup-Modus**
-   - Ermöglicht das **manuelle Einstellen und Speichern** von Werten für definierte Frequenzbereiche.
-   - Aktiviert die Eingabefelder für Min/Max Frequenz und die Slider/Checkboxen.
-   - Deaktiviert automatische Updates durch den Live-Modus.
+2. **Tuner Status**
 
-4. **Live-Modus**
-   - Übernimmt automatisch die gespeicherten Werte aus der Frequenzliste entsprechend der aktuell vom TRX ausgelesenen Frequenz.
-   - Slider und Checkboxen werden gesperrt, um unbeabsichtigte Änderungen zu verhindern.
+   * Displays whether the tuner is reachable over LAN.
+   * Allows setting L, C, and high/low-pass values via sliders and checkbox.
 
-5. **Frequenzbereiche / Settings**
-   - Speicherung von unterer und oberer Frequenz, L-Wert, C-Wert und Hoch-/Tiefpass.
-   - Automatisches Laden der Werte, wenn die Frequenz in einem gespeicherten Bereich liegt.
-   - Visualisierung in einer Liste mit Hervorhebung des aktuell aktiven Eintrags.
-   - Speicherung der TRX-Port/Host und SBC-IP/Port Einstellungen.
+3. **Setup Mode**
 
-6. **Reduzierte / Erweiterte Ansicht**
-   - Reduzierte Ansicht: Zeigt nur TRX-Verbindung, Tuner-Verbindung und aktuelle Frequenz.
-   - Erweiterte Ansicht: Zusätzlich Steuerung der Slider, Checkbox, Frequenzbereichseingaben und gespeicherte Einstellungen.
+   * Enables **manual setting and saving** of values for defined frequency ranges.
+   * Activates input fields for min/max frequency and sliders/checkboxes.
+   * Disables automatic updates in live mode.
 
-7. **Live-Visualisierung**
-   - Farbige Hervorhebung der aktiven Frequenzbereichs-Einträge.
-   - Anzeige des aktiven Modus (Setup / Live) über visuelle Indikatoren.
+4. **Live Mode**
+
+   * Automatically applies saved values based on the frequency currently read from the TRX.
+   * Sliders and checkboxes are blocked to prevent accidental changes.
+
+5. **Frequency Ranges / Settings**
+
+   * Stores lower/upper frequency, L, C, and high/low-pass values.
+   * Automatically loads values if the frequency falls within a saved range.
+   * Displays a list of saved entries, highlighting the currently active one.
+   * Saves TRX port/host and SBC IP/Port settings.
+
+6. **Reduced / Advanced View**
+
+   * Reduced view: Shows only TRX status, tuner status, and current frequency.
+   * Advanced view: Includes sliders, checkbox, frequency input fields, and saved settings.
+
+7. **Live Visualization**
+
+   * Highlights active frequency range entries.
+   * Shows active mode (Setup / Live) using visual indicators.
 
 ---
 
-## Software-Architektur / Modularität
+## Software Architecture / Modularity
 
-Die Software ist **modular aufgebaut**, um zukünftige Erweiterungen einfach zu ermöglichen:
+The software is **modular**, allowing future extensions:
 
 ### Backend
-- `trx.py`: Schnittstelle zum Transceiver (über Hamlib oder CAT-DLL).
-- `messages.py`: Nachrichtenerzeugung für L-, C- und HP-Werte.
-- `settings.py`: Verwaltung der Frequenzbereiche, L-, C- und HP-Werte sowie TRX/SBC-Einstellungen.
-- `utils/`
-  - `network.py`: Ping, send_udp
-  - `sbc65ec.py`: SBC65-spezifische Logik
+
+* `trx.py`: Interface to the transceiver (via Hamlib or CAT DLL).
+* `messages.py`: Builds messages for L, C, and HP values.
+* `settings.py`: Manages frequency ranges, L, C, HP values, and TRX/SBC settings.
+* `utils/`
+
+  * `network.py`: Ping, send\_udp
+  * `sbc65ec.py`: SBC65-specific logic
 
 ### Frontend (GUI)
-- `gui.py`: Hauptfenster der Anwendung mit PyQt6.
-  - Statusanzeigen (TRX, Tuner, Frequenz)
-  - Slider für L/C, Checkbox für HP
-  - Eingabefelder für Frequenzbereiche
-  - Liste der gespeicherten Einstellungen
-  - Setup / Live Modus
-  - Reduzierte / Erweiterte Ansicht
+
+* `gui.py`: Main application window using PyQt6.
+
+  * Status indicators (TRX, tuner, frequency)
+  * L/C sliders, HP checkbox
+  * Frequency range input fields
+  * List of saved settings
+  * Setup / Live mode
+  * Reduced / Advanced view
 
 ---
 
-
-
-## Projektstruktur
+## Project Structure
 
 ```
 cknetctrl/
@@ -233,64 +244,65 @@ cknetctrl/
 
 ---
 
-# Klassen und Funktionen
+# Classes and Functions
 
-| Modul                      | Klasse / Funktion                                                     | Beschreibung / Zweck                                                                                                                             |
-| -------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `main.py`                  | `QApplication`                                                        | Startet die Qt-Anwendung.                                                                                                                        |
-|                            | `MainWindow`                                                          | Initialisiert das Hauptfenster der Christian-Koppler-Software.                                                                                   |
-|                            | `app.exec()`                                                          | Startet die Qt-Event-Schleife.                                                                                                                   |
-| `gui.py`                   | `HeartbeatThread`                                                     | Thread zur periodischen Überprüfung der Erreichbarkeit des Tuners.                                                                               |
-|                            | `__init__(tuner, interval=1.0)`                                       | Initialisiert den Heartbeat-Thread mit Referenz auf den Tuner und Intervall.                                                                     |
-|                            | `run()`                                                               | Hauptschleife des Threads, prüft die Erreichbarkeit und sendet Signal.                                                                           |
-|                            | `stop()`                                                              | Stoppt den Thread sicher.                                                                                                                        |
-| `gui.py`                   | `MainWindow`                                                          | Hauptfenster der Anwendung, enthält GUI-Elemente, Statusanzeigen und Backend-Logik.                                                              |
-|                            | `__init__()`                                                          | Initialisiert GUI, Backend, Timer, Heartbeat-Thread und verbindet Signale.                                                                       |
-|                            | `connect_trx()`                                                       | Baut Verbindung zum TRX auf, aktualisiert Statusanzeige und Timer.                                                                               |
-|                            | `check_trx_connection()`                                              | Prüft periodisch die Verbindung zum TRX und aktualisiert Anzeige.                                                                                |
-|                            | `update_status()`                                                     | Aktualisiert TRX-Status, Frequenzanzeige und lädt Werte im Live-Modus.                                                                           |
-|                            | `update_tuner_status(reachable)`                                      | Aktualisiert GUI-Statusanzeige für Tuner je nach Erreichbarkeit.                                                                                 |
-|                            | `toggle_setup_mode(checked)`                                          | Schaltet Setup-Modus ein/aus und passt GUI entsprechend an.                                                                                      |
-|                            | `_apply_mode_settings()`                                              | Aktiviert oder deaktiviert Widgets abhängig vom aktuellen Modus.                                                                                 |
-|                            | `toggle_view()`                                                       | Umschalten zwischen reduzierter und erweiterter Ansicht.                                                                                         |
-|                            | `schedule_update()`                                                   | Debounced Update der Tuner-Werte bei Slider/Checkbox-Änderungen.                                                                                 |
-|                            | `_send_tuner_values()`                                                | Sendet aktuelle L-, C- und HP-Werte an den Tuner.                                                                                                |
-|                            | `save_current()`                                                      | Speichert aktuelle Frequenzbereichs- und TRX/SBC-Einstellungen.                                                                                  |
-|                            | `delete_selected()`                                                   | Löscht den aktuell ausgewählten Eintrag aus der Frequenzliste.                                                                                   |
-|                            | `load_from_json()`                                                    | Lädt Frequenz- und Tuner-Einstellungen aus einer JSON-Datei.                                                                                     |
-|                            | `load_list()`                                                         | Lädt die GUI-Liste der gespeicherten Frequenzbereiche.                                                                                           |
-|                            | `connect_to_sbc()`                                                    | Baut Verbindung zum SBC65EC auf, prüft Erreichbarkeit, startet Heartbeat.                                                                        |
-|                            | `load_saved_meta()`                                                   | Lädt gespeicherte SBC- und TRX-Einstellungen in die GUI.                                                                                         |
-| `backend/trx.py`           | `TRX`                                                                 | Schnittstelle zum Transceiver via Hamlib oder Dummy-Modus.                                                                                       |
-|                            | `__init__(rig_id, port, baudrate, databits, parity, stopbits, dummy)` | Initialisiert TRX-Objekt, wählt Hamlib-Rig oder Dummy.                                                                                           |
-|                            | `list_available_rigs()`                                               | Gibt alle bekannten Hamlib-Rigs als Liste zurück.                                                                                                |
-|                            | `connect()`                                                           | Öffnet die Verbindung zum TRX oder Dummy.                                                                                                        |
-|                            | `get_frequency()`                                                     | Liest die aktuelle Frequenz aus dem TRX oder Dummy.                                                                                              |
-|                            | `close()`                                                             | Schließt die Verbindung zum TRX.                                                                                                                 |
-| `backend/settings.py`      | `Settings`                                                            | Verwaltung der Frequenzbereiche, TRX- und SBC-Einstellungen.                                                                                     |
-|                            | `__init__(filename="settings.json")`                                  | Initialisiert die Settings, lädt gespeicherte Werte.                                                                                             |
-|                            | `load()`                                                              | Lädt Settings aus der JSON-Datei.                                                                                                                |
-|                            | `load_from_json(filename=None)`                                       | Lädt Settings aus einer optional angegebenen JSON-Datei.                                                                                         |
-|                            | `save()`                                                              | Speichert aktuelle Frequenzen und TRX/SBC-Einstellungen in JSON.                                                                                 |
-|                            | `get_for_frequency(freq)`                                             | Gibt den gespeicherten Eintrag für die gegebene Frequenz zurück.                                                                                 |
-|                            | `add_entry(min_freq, max_freq, L, C, highpass)`                       | Fügt einen neuen Frequenzbereich mit L/C/HP-Werten hinzu.                                                                                        |
-| `backend/messages.py`      | `build_messages(val_l, val_c, highpass)`                              | Baut alle Nachrichten für den SBC65EC basierend auf L-, C- und Hoch-/Tiefpass-Werten. Liefert vier Bytearrays: msg\_a, msg\_b, msg\_c1, msg\_c2. |
-| `backend/utils/sbc65ec.py` | `SBC65EC`                                                             | Steuerung des SBC65EC Tuners über UDP; prüft Erreichbarkeit und sendet L-, C- und HP-Werte.                                                      |
-|                            | `__init__(host, port, debug)`                                         | Initialisiert Tuner mit IP, Port und optional Debug-Modus.                                                                                       |
-|                            | `check_reachability(timeout)`                                         | Prüft, ob der Tuner erreichbar ist (per ICMP) und setzt `reachable`.                                                                             |
-|                            | `send_values(l_value, c_value, highpass)`                             | Sendet Werte an den Tuner, nur wenn sich Werte geändert haben; Debug-Ausgabe optional.                                                           |
-| `backend/utils/network.py` | `ping_icmp(ip, timeout=1.0, attempts=3)`                              | Führt ein klassisches ICMP-Ping durch; unterstützt Windows und Linux.                                                                            |
-|                            | `send_udp(ip, port, data, timeout=1.0)`                               | Sendet ein UDP-Paket an die angegebene IP/Port und gibt True bei Erfolg zurück.
+| Module                     | Class / Function                                                      | Description / Purpose                                                                                                         |
+| -------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `main.py`                  | `QApplication`                                                        | Starts the Qt application.                                                                                                    |
+|                            | `MainWindow`                                                          | Initializes the main window of the Christian-Koppler software.                                                                |
+|                            | `app.exec()`                                                          | Starts the Qt event loop.                                                                                                     |
+| `gui.py`                   | `HeartbeatThread`                                                     | Thread for periodically checking tuner reachability.                                                                          |
+|                            | `__init__(tuner, interval=1.0)`                                       | Initializes the heartbeat thread with tuner reference and interval.                                                           |
+|                            | `run()`                                                               | Main thread loop; checks reachability and emits signals.                                                                      |
+|                            | `stop()`                                                              | Safely stops the thread.                                                                                                      |
+| `gui.py`                   | `MainWindow`                                                          | Main application window with GUI elements, status indicators, and backend logic.                                              |
+|                            | `__init__()`                                                          | Initializes GUI, backend, timers, heartbeat thread, and signal connections.                                                   |
+|                            | `connect_trx()`                                                       | Establishes TRX connection, updates status and timer.                                                                         |
+|                            | `check_trx_connection()`                                              | Periodically checks TRX connection and updates status.                                                                        |
+|                            | `update_status()`                                                     | Updates TRX status, frequency display, and loads values in live mode.                                                         |
+|                            | `update_tuner_status(reachable)`                                      | Updates GUI tuner status based on reachability.                                                                               |
+|                            | `toggle_setup_mode(checked)`                                          | Enables/disables setup mode and adjusts GUI accordingly.                                                                      |
+|                            | `_apply_mode_settings()`                                              | Activates or deactivates widgets depending on the current mode.                                                               |
+|                            | `toggle_view()`                                                       | Switches between reduced and advanced view.                                                                                   |
+|                            | `schedule_update()`                                                   | Debounced update of tuner values on slider/checkbox changes.                                                                  |
+|                            | `_send_tuner_values()`                                                | Sends current L, C, and HP values to the tuner.                                                                               |
+|                            | `save_current()`                                                      | Saves current frequency range and TRX/SBC settings.                                                                           |
+|                            | `delete_selected()`                                                   | Deletes the currently selected frequency entry.                                                                               |
+|                            | `load_from_json()`                                                    | Loads frequency and tuner settings from a JSON file.                                                                          |
+|                            | `load_list()`                                                         | Loads the GUI list of saved frequency ranges.                                                                                 |
+|                            | `connect_to_sbc()`                                                    | Connects to the SBC65EC, checks reachability, and starts the heartbeat thread.                                                |
+|                            | `load_saved_meta()`                                                   | Loads saved SBC and TRX settings into the GUI.                                                                                |
+| `backend/trx.py`           | `TRX`                                                                 | Interface to the transceiver via Hamlib or dummy mode.                                                                        |
+|                            | `__init__(rig_id, port, baudrate, databits, parity, stopbits, dummy)` | Initializes TRX object; selects Hamlib rig or dummy mode.                                                                     |
+|                            | `list_available_rigs()`                                               | Returns a list of all known Hamlib rigs.                                                                                      |
+|                            | `connect()`                                                           | Opens connection to the TRX or dummy.                                                                                         |
+|                            | `get_frequency()`                                                     | Reads the current frequency from the TRX or dummy.                                                                            |
+|                            | `close()`                                                             | Closes the connection to the TRX.                                                                                             |
+| `backend/settings.py`      | `Settings`                                                            | Manages frequency ranges, TRX, and SBC settings.                                                                              |
+|                            | `__init__(filename="settings.json")`                                  | Initializes settings and loads saved values.                                                                                  |
+|                            | `load()`                                                              | Loads settings from the JSON file.                                                                                            |
+|                            | `load_from_json(filename=None)`                                       | Loads settings from an optional JSON file.                                                                                    |
+|                            | `save()`                                                              | Saves current frequency and TRX/SBC settings to JSON.                                                                         |
+|                            | `get_for_frequency(freq)`                                             | Returns the saved entry for a given frequency.                                                                                |
+|                            | `add_entry(min_freq, max_freq, L, C, highpass)`                       | Adds a new frequency range with L/C/HP values.                                                                                |
+| `backend/messages.py`      | `build_messages(val_l, val_c, highpass)`                              | Builds all messages for the SBC65EC based on L, C, and HP values. Returns four byte arrays: msg\_a, msg\_b, msg\_c1, msg\_c2. |
+| `backend/utils/sbc65ec.py` | `SBC65EC`                                                             | Controls the SBC65EC tuner via UDP; checks reachability and sends L, C, and HP values.                                        |
+|                            | `__init__(host, port, debug)`                                         | Initializes the tuner with IP, port, and optional debug mode.                                                                 |
+|                            | `check_reachability(timeout)`                                         | Checks if the tuner is reachable (via ICMP) and sets `reachable`.                                                             |
+|                            | `send_values(l_value, c_value, highpass)`                             | Sends values to the tuner only if changed; optional debug output.                                                             |
+| `backend/utils/network.py` | `ping_icmp(ip, timeout=1.0, attempts=3)`                              | Performs a standard ICMP ping; supports Windows and Linux.                                                                    |
+|                            | `send_udp(ip, port, data, timeout=1.0)`                               | Sends a UDP packet to the given IP/port and returns True on success.                                                          |
 
 ---
 
-## Lizenz
+## License
 
-Dieses Projekt ist **Open Source**, lizenziert unter **GPLv3 + Non-Commercial**.  
+This project is **Open Source**, licensed under **GPLv3 + Non-Commercial**.
 
-- **Non-Commercial:** Die Software darf nicht für kommerzielle Zwecke verwendet werden.  
-  Kommerzielle Zwecke schließen den Verkauf, die Lizenzierung oder die Nutzung der Software für bezahlte Dienstleistungen ein.
-- **Copyleft:** Änderungen oder abgeleitete Werke müssen ebenfalls unter dieser Lizenz veröffentlicht werden.
-- **Haftungsausschluss:** Die Software wird ohne jegliche Garantie bereitgestellt.
+* **Non-Commercial:** The software may not be used for commercial purposes, including sale, licensing, or paid services.
+* **Copyleft:** Any modifications or derivative works must also be published under the same license.
+* **Disclaimer:** The software is provided without any warranty.
 
-Für die vollständigen Lizenzbedingungen siehe die [LICENSE-Datei](./LICENSE) im Repository.
+See the [LICENSE file](./LICENSE) in the repository for full license terms.
+
+
