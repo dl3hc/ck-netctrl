@@ -5,7 +5,9 @@
 
 ## Project Overview
 
-The Christian-Koppler Control Software is a desktop application for controlling a Christian-Koppler (antenna tuner) over a LAN interface in conjunction with a transceiver (TRX) using CAT commands.
+The Christian-Koppler Control Software is a desktop application for controlling a Christian-Koppler (antenna tuner) over a LAN interface in conjunction with a transceiver (TRX) using CAT commands.  
+The TRX control is handled via **[Hamlib](https://github.com/Hamlib/Hamlib)**, allowing seamless integration with a wide range of transceivers.
+
 
 The software allows **automatic tuning** according to the frequency currently received by the TRX, as well as **manual setting and saving of L, C, and high/low-pass values** for specific frequency ranges.
 
