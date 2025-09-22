@@ -123,6 +123,11 @@ class MainWindow(QMainWindow):
         self.tuner_status: QLabel = QLabel("Tuner: ❌ not connected")
         self.freq_label: QLabel = QLabel("Freq: 0 Hz")
 
+        # --- Blink-Timer für Frequenzwarnung ---
+        self._blink_state = False
+        self.blink_timer = QTimer()
+        self.blink_timer.timeout.connect(self._toggle_blink)
+
         # --- TRX dropdown + input ---
         self.trx_combo: QComboBox = QComboBox()
         for rig_name, rig_id in sorted(TRX.list_available_rigs(), key=lambda x: x[0]):
@@ -315,11 +320,61 @@ class MainWindow(QMainWindow):
             self.trx_status.setText("TRX: ❌ connection lost")
             self.trx_check_timer.stop()
 
-    # --- Status & frequency range ---
+    def _update_freq_label(self, freq: int, show_warning: bool, blink_on: bool = True):
+        """
+        Update freq_label with current frequency and optional warning icon.
+        Warning appears right-aligned inside the same label.
+        Background color adapts to setup mode and blinks if warning is active.
+        """
+        base_text = f"Freq: {int(freq)} Hz"
+
+        # Hintergrundfarbe
+        if show_warning and self._blink_state:
+            color = "#FF7F7F"  # rot blink
+        else:
+            color = "#FFFACD" if self.setup_mode else "#C6F6C6"
+
+        # Warnung rechts anzeigen
+        if show_warning and blink_on:
+            warning_html = '<span style="color:black;">&#9888; Warning: no corresponding frequency found</span>'
+        else:
+            warning_html = ""
+
+
+        # HTML innerhalb eines flex-box Containers
+        html = f"""
+        <div style="display:flex; justify-content: space-between; align-items: center;">
+            <span>{base_text}</span>
+            <span>{warning_html}</span>
+        </div>
+        """
+
+        self.freq_label.setTextFormat(Qt.TextFormat.RichText)
+        self.freq_label.setText(html)
+        self.freq_label.setAlignment(Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft)
+        self.freq_label.setStyleSheet(f"background-color: {color}; font-weight: bold; border: 1px solid black;")
+
+    def _toggle_blink(self):
+        """
+        Toggle blinking of the warning and background in freq_label.
+        """
+        self._blink_state = not self._blink_state
+
+        # Frequenz extrahieren aus dem Label-HTML
+        import re
+        text = self.freq_label.text()
+        m = re.search(r'Freq:\s*(\d+)', text)
+        freq = int(m.group(1)) if m else 0
+
+        # Zeige Warnung nur, wenn sie aktuell vorhanden ist
+        show_warning = "Warning" in text
+        self._update_freq_label(freq, show_warning, blink_on=self._blink_state)
+
+
     def update_status(self):
         """
-        Update the TRX status and currently tuned frequency.
-        Applies active tuner settings if not in setup mode.
+        Update TRX status and currently tuned frequency.
+        Also handle frequency warning and blink logic.
         """
         trx_connected = self.trx.connected if self.trx else False
 
@@ -330,8 +385,8 @@ class MainWindow(QMainWindow):
             self.trx_status.setText("TRX: ❌ not connected")
 
         freq = self.trx.get_frequency() if self.trx and trx_connected else 0
-        self.freq_label.setText(f"Freq: {int(freq)} Hz")
 
+        show_warning = False
         if not self.setup_mode and trx_connected:
             entry = self.settings.get_for_frequency(freq)
             if entry != self._active_entry:
@@ -347,6 +402,21 @@ class MainWindow(QMainWindow):
                     self.L_slider.blockSignals(False)
                     self.C_slider.blockSignals(False)
                     self.HP_checkbox.blockSignals(False)
+            if not entry:
+                show_warning = True
+
+        # Update freq_label inkl. Warnung
+        self._update_freq_label(freq, show_warning)
+
+        # Start/Stop Blink-Timer
+        if show_warning:
+            if not self.blink_timer.isActive():
+                self._blink_state = True
+                self.blink_timer.start(500)
+        else:
+            self.blink_timer.stop()
+            self._blink_state = False
+
 
     # --- Common tuner status logic ---
     def _set_tuner_status(self, reachable: bool, ip: Optional[str] = None, port: Optional[int] = None, initial_try: bool = False):
