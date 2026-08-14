@@ -90,54 +90,15 @@ class TRXServiceImpl(TRXService):
             return None
     
     def is_connected(self) -> bool:
-        """Returns True if the TRX is connected."""
-        # If we're not connected, return False immediately
-        if not self._connected:
-            return False
-            
-        # If we are connected, perform an active check to verify connection
-        try:
-            # Try to get frequency to verify connection is still alive
-            if self._rig:
-                freq = self._rig.get_freq()
-                # Additional verification - make sure we got a valid frequency
-                if freq is not None and freq > 0:
-                    return True
-                else:
-                    # If we got an invalid frequency, treat as disconnected
-                    self._connected = False
-                    return False
-        except Exception as e:
-            # If we get an exception, the connection is likely lost
-            print(f"Connection check failed: {e}")
-            self._connected = False
-            return False
-            
-        return True
-    
-    def force_check_connection(self) -> bool:
-        """Force a connection check and update internal state."""
-        if not self._connected:
-            return False
-            
-        try:
-            # Try to get frequency to verify connection is still alive
-            if self._rig:
-                freq = self._rig.get_freq()
-                # Additional verification - make sure we got a valid frequency
-                if freq is not None and freq > 0:
-                    return True
-                else:
-                    # If we got an invalid frequency, treat as disconnected
-                    self._connected = False
-                    return False
-        except Exception as e:
-            # If we get an exception, the connection is likely lost
-            print(f"Connection check failed: {e}")
-            self._connected = False
-            return False
-            
-        return True
+        """
+        Returns True if the TRX is connected.
+
+        Returns the cached connection state rather than actively probing
+        the rig. Liveness is instead verified as a side effect of
+        get_frequency(), which clears the cached state on failure - this
+        avoids issuing a redundant Hamlib query on every check.
+        """
+        return self._connected
     
     def close(self) -> None:
         """Closes the connection to the TRX."""

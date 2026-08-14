@@ -327,7 +327,8 @@ class MainWindow(QMainWindow):
     def connect_trx(self):
         """
         Connect to the selected TRX device using the selected model and port.
-        Updates TRX status and starts a periodic connection check.
+        Updates TRX status; the periodic status_timer (update_status) then
+        picks up frequency and connection-liveness in a single poll.
         """
         rig_id = self.trx_combo.currentData()
         port = self.trx_port_input.text().strip()
@@ -356,11 +357,6 @@ class MainWindow(QMainWindow):
             self.settings_service.set_trx_config(rig_id, port, baudrate, dtr_state, rts_state)
             self.settings_service.save()
             self.trx_status.setText(f"TRX: ✅ connected ({self.trx_combo.currentText()})")
-            # Ensure we have a check timer running
-            if not hasattr(self, 'trx_check_timer') or not self.trx_check_timer.isActive():
-                self.trx_check_timer = QTimer()
-                self.trx_check_timer.timeout.connect(self.check_trx_connection)
-                self.trx_check_timer.start(2000)
         else:
             self.trx_status.setText("TRX: ❌ connection failed")
 
@@ -370,25 +366,8 @@ class MainWindow(QMainWindow):
         frees the underlying port so it can be reused, e.g. by another
         application or a new connect attempt with different settings.
         """
-        if hasattr(self, 'trx_check_timer'):
-            self.trx_check_timer.stop()
         self.trx_service.close()
         self.trx_status.setText("TRX: ❌ not connected")
-
-    def check_trx_connection(self):
-        """
-        Periodically checks if the TRX connection is alive and updates status.
-        Uses active connection verification rather than just checking cached state.
-        Continues checking even after disconnection to detect recovery.
-        """
-        # Use the service's is_connected method which should now actively verify
-        connected = self.trx_service.is_connected()
-
-        if connected:
-            rig_name = self.trx_combo.currentText()
-            self.trx_status.setText(f"TRX: ✅ connected to {rig_name}")
-        else:
-            self.trx_status.setText("TRX: ❌ connection lost")
 
     # --- Status & frequency range ---
     def _update_freq_label(self, freq: int, show_warning: bool, blink_on: bool = True):
@@ -436,7 +415,10 @@ class MainWindow(QMainWindow):
         Handles connection state changes gracefully.
         Also manages the blinking "no matching frequency entry" warning.
 
-        Uses try/except around get_frequency() to automatically detect disconnections.
+        Issues exactly one Hamlib frequency query per tick. Connection loss
+        is detected from that same query (get_frequency() updates the
+        service's cached connection state internally on failure) instead of
+        a separate, redundant liveness probe.
         """
         trx_connected = False
         freq = 0
@@ -444,17 +426,16 @@ class MainWindow(QMainWindow):
             trx_connected = self.trx_service.is_connected()
 
             if trx_connected:
+                freq = self.trx_service.get_frequency()
+                if freq is None:
+                    freq = 0
+                    trx_connected = self.trx_service.is_connected()
+
                 rig_name = self.trx_combo.currentText()
-                self.trx_status.setText(f"TRX: ✅ connected to {rig_name}")
-                # Only try to get frequency if connected
-                try:
-                    freq = self.trx_service.get_frequency()
-                except Exception as e:
-                    print(f"Error reading frequency during status update: {e}")
-                    # Force a recheck of connection state after error
-                    trx_connected = self.trx_service.force_check_connection()
-                    if not trx_connected:
-                        self.trx_status.setText("TRX: ❌ connection lost")
+                self.trx_status.setText(
+                    f"TRX: ✅ connected to {rig_name}" if trx_connected
+                    else "TRX: ❌ connection lost"
+                )
             else:
                 self.trx_status.setText("TRX: ❌ not connected")
 
