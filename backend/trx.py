@@ -110,6 +110,18 @@ class TRX:
             except Exception as e:
                 self.connected = False
                 print(f"Error connecting to TRX: {e}")
+    
+    def is_connected(self):
+        """
+        Returns True if the TRX is connected.
+        
+        This method provides a simple way to check connection status.
+        For more robust checking, use force_check_connection().
+        
+        Returns:
+            bool: True if connected, False otherwise
+        """
+        return self.connected
 
     def get_frequency(self):
         """
@@ -134,6 +146,28 @@ class TRX:
                 print(f"Error reading frequency: {e}")
                 return None
 
+    def check_connection(self):
+        """
+        Verifies the TRX connection by attempting to read frequency.
+
+        Returns:
+            bool: True if connection is active, False otherwise
+
+        This method actively checks the connection status rather than relying
+        on the cached connected flag.
+        """
+        if self.dummy:
+            return self.connected
+
+        try:
+            # Try to get frequency to verify connection is still alive
+            freq = self.rig.get_freq()
+            return True
+        except Exception as e:
+            print(f"Connection check failed: {e}")
+            self.connected = False
+            return False
+
     def close(self):
         """
         Closes the connection to the TRX.
@@ -144,6 +178,25 @@ class TRX:
             self.rig.close()
             self.connected = False
             print("TRX connection closed")
+    
+    def force_check_connection(self):
+        """
+        Force a connection check on the raw TRX object.
+        
+        Returns:
+            bool: True if connection is active, False otherwise
+        """
+        if self.dummy:
+            return self.connected
+            
+        try:
+            # Try to get frequency to verify connection is still alive
+            freq = self.rig.get_freq()
+            return True
+        except Exception as e:
+            print(f"Connection check failed: {e}")
+            self.connected = False
+            return False
 
 
 # def main():

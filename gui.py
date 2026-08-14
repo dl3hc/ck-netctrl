@@ -33,10 +33,15 @@ from PyQt6.QtWidgets import (
 )
 from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal
 from PyQt6.QtGui import QIntValidator
-from backend.trx import TRX
-from backend.settings import Settings
-from backend.utils.sbc65ec import SBC65EC
+from backend.services.trx_service import TRXService
+from backend.services.tuner_service import TunerService
+from backend.services.settings_service import SettingsService
+from backend.services.impl.trx_service_impl import TRXServiceImpl
+from backend.services.impl.tuner_service_impl import TunerServiceImpl
+from backend.services.impl.settings_service_impl import SettingsServiceImpl
 import time
+from backend.trx import TRX
+from backend.utils.sbc65ec import SBC65EC
 
 
 # --- Heartbeat Thread ---
@@ -108,11 +113,11 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Christian-Koppler Network Control")
 
-        # --- Backend ---
-        self.trx: Optional[TRX] = None
-        self.settings: Settings = Settings()
-        self.tuner: SBC65EC = SBC65EC(debug=False)
-
+        # --- Backend services ---
+        self.trx_service: TRXService = TRXServiceImpl()
+        self.tuner_service: TunerService = TunerServiceImpl()
+        self.settings_service: SettingsService = SettingsServiceImpl()
+        
         # --- Mode ---
         self.setup_mode: bool = True
         self._active_entry: Optional[dict] = None
@@ -261,7 +266,7 @@ class MainWindow(QMainWindow):
         self.debounce_timer.timeout.connect(self._send_tuner_values)
 
         # --- Heartbeat thread ---
-        self.heartbeat_thread: HeartbeatThread = HeartbeatThread(self.tuner)
+        self.heartbeat_thread: HeartbeatThread = HeartbeatThread(self.tuner_service)
         self.heartbeat_thread.update_signal.connect(self.update_tuner_status)
 
         # --- Signals ---
@@ -295,45 +300,70 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Error", "Please enter a port or host")
             return
 
-        self.trx = TRX(rig_id=rig_id, port=port)
-        self.trx.connect()
+        connected = self.trx_service.connect(rig_id=rig_id, port=port)
 
-        if self.trx.connected:
+        if connected:
             self.trx_status.setText(f"TRX: ✅ connected ({self.trx_combo.currentText()})")
-            self.trx_check_timer = QTimer()
-            self.trx_check_timer.timeout.connect(self.check_trx_connection)
-            self.trx_check_timer.start(2000)
+            # Ensure we have a check timer running
+            if not hasattr(self, 'trx_check_timer') or not self.trx_check_timer.isActive():
+                self.trx_check_timer = QTimer()
+                self.trx_check_timer.timeout.connect(self.check_trx_connection)
+                self.trx_check_timer.start(2000)
         else:
             self.trx_status.setText("TRX: ❌ connection failed")
 
     def check_trx_connection(self):
         """
         Periodically checks if the TRX connection is alive and updates status.
-        Stops the timer if the connection is lost.
+        Uses active connection verification rather than just checking cached state.
+        Continues checking even after disconnection to detect recovery.
         """
-        if not self.trx.connected:
+        # Use the service's is_connected method which should now actively verify
+        connected = self.trx_service.is_connected()
+
+        if connected:
+            rig_name = self.trx_combo.currentText()
+            self.trx_status.setText(f"TRX: ✅ connected to {rig_name}")
+        else:
             self.trx_status.setText("TRX: ❌ connection lost")
-            self.trx_check_timer.stop()
 
     # --- Status & frequency range ---
     def update_status(self):
         """
         Update the TRX status and currently tuned frequency.
         Applies active tuner settings if not in setup mode.
+        Handles connection state changes gracefully.
+
+        Uses try/except around get_frequency() to automatically detect disconnections.
         """
-        trx_connected = self.trx.connected if self.trx else False
+        try:
+            trx_connected = self.trx_service.is_connected()
 
-        if trx_connected:
-            rig_name = self.trx_combo.currentText()
-            self.trx_status.setText(f"TRX: ✅ connected to {rig_name}")
-        else:
-            self.trx_status.setText("TRX: ❌ not connected")
+            if trx_connected:
+                rig_name = self.trx_combo.currentText()
+                self.trx_status.setText(f"TRX: ✅ connected to {rig_name}")
+                # Only try to get frequency if connected
+                freq = 0
+                try:
+                    freq = self.trx_service.get_frequency()
+                except Exception as e:
+                    print(f"Error reading frequency during status update: {e}")
+                    # Force a recheck of connection state after error
+                    trx_connected = self.trx_service.force_check_connection()
+                    if not trx_connected:
+                        self.trx_status.setText("TRX: ❌ connection lost")
+            else:
+                self.trx_status.setText("TRX: ❌ not connected")
+                freq = 0
 
-        freq = self.trx.get_frequency() if self.trx and trx_connected else 0
-        self.freq_label.setText(f"Freq: {int(freq)} Hz")
+            self.freq_label.setText(f"Freq: {int(freq)} Hz")
+
+        except Exception as e:
+            print(f"Error updating TRX status: {e}")
+            self.trx_status.setText("TRX: ❌ error")
 
         if not self.setup_mode and trx_connected:
-            entry = self.settings.get_for_frequency(freq)
+            entry = self.settings_service.get_for_frequency(freq)
             if entry != self._active_entry:
                 self._active_entry = entry
                 if entry:
@@ -359,8 +389,8 @@ class MainWindow(QMainWindow):
             port (int, optional): Port of the tuner. Defaults to tuner's port.
             initial_try (bool, optional): Indicates if this is the initial connection attempt.
         """
-        ip = ip or self.tuner.host
-        port = port or self.tuner.port
+        ip = ip or self.tuner_service.host
+        port = port or self.tuner_service.port
 
         if reachable:
             self.tuner_status.setText(f"Tuner: ✅ reachable at {ip}:{port}")
@@ -443,11 +473,11 @@ class MainWindow(QMainWindow):
         """
         Send current L, C, and HP values to tuner if reachable.
         """
-        if getattr(self.tuner, "reachable", False):
+        if self.tuner_service.is_reachable():
             l_val = self.L_slider.value()
             c_val = self.C_slider.value()
             hp_val = self.HP_checkbox.isChecked()
-            self.tuner.send_values(l_val, c_val, hp_val)
+            self.tuner_service.send_values(l_val, c_val, hp_val)
 
     # --- Save / delete / JSON ---
     def save_current(self):
@@ -456,7 +486,20 @@ class MainWindow(QMainWindow):
         """
         if not self.setup_mode:
             return
-        # Implementation remains the same as original
+        
+        # Get values from GUI
+        min_freq = int(self.freq_min_input.text()) if self.freq_min_input.text() else 0
+        max_freq = int(self.freq_max_input.text()) if self.freq_max_input.text() else 0
+        l_val = self.L_slider.value()
+        c_val = self.C_slider.value()
+        hp_val = self.HP_checkbox.isChecked()
+        
+        # Save to settings service
+        self.settings_service.add_entry(min_freq, max_freq, l_val, c_val, hp_val)
+        self.settings_service.save()
+        
+        # Refresh list
+        self.load_list()
 
     def delete_selected(self):
         """
@@ -464,7 +507,12 @@ class MainWindow(QMainWindow):
         """
         if not self.setup_mode:
             return
-        # Implementation remains the same
+        
+        current_row = self.freq_list.currentRow()
+        if current_row >= 0:
+            self.settings_service.delete_entry(current_row)
+            self.settings_service.save()
+            self.load_list()
 
     def load_from_json(self):
         """
@@ -472,14 +520,21 @@ class MainWindow(QMainWindow):
         """
         if not self.setup_mode:
             return
-        # Implementation remains the same
+        
+        # Implementation remains the same but uses service
+        filename, _ = QFileDialog.getOpenFileName(
+            self, "Load Settings", "", "JSON Files (*.json)"
+        )
+        if filename:
+            self.settings_service.load_from_json(filename)
+            self.load_list()
 
     def load_list(self):
         """
         Refresh the list widget with current frequency entries.
         """
         self.freq_list.clear()
-        for entry in self.settings.data:
+        for entry in self.settings_service.data:
             self.freq_list.addItem(
                 f"{entry['min_freq']}-{entry['max_freq']} Hz: L={entry['L']}, C={entry['C']}, HP={entry['highpass']}"
             )
@@ -503,10 +558,9 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Error", "Port must be a number between 1 and 65535")
             return
 
-        self.tuner.host = ip
-        self.tuner.port = port
+        self.tuner_service.set_host_port(ip, port)
 
-        reachable = self.tuner.check_reachability(timeout=0.5)
+        reachable = self.tuner_service.check_reachability(timeout=0.5)
         self._set_tuner_status(reachable, ip, port, initial_try=True)
 
         if reachable and not self.heartbeat_thread.isRunning():
@@ -517,9 +571,10 @@ class MainWindow(QMainWindow):
         """
         Load saved TRX and SBC settings into UI fields.
         """
-        self.sbc_ip_input.setText(self.settings.sbc_ip)
-        self.sbc_port_input.setText(str(self.settings.sbc_port))
-        index = self.trx_combo.findData(self.settings.trx_id)
+        # Use service to get settings
+        self.sbc_ip_input.setText(self.settings_service.sbc_ip)
+        self.sbc_port_input.setText(str(self.settings_service.sbc_port))
+        index = self.trx_combo.findData(self.settings_service.trx_id)
         if index >= 0:
             self.trx_combo.setCurrentIndex(index)
-        self.trx_port_input.setText(self.settings.trx_port)
+        self.trx_port_input.setText(self.settings_service.trx_port)
