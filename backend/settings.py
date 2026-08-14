@@ -57,6 +57,7 @@ class Settings:
         self.trx_baudrate = 9600
         self.trx_dtr_state = "UNSET"
         self.trx_rts_state = "UNSET"
+        self.trx_conn_type = "serial"
         self.load()
 
     def load(self):
@@ -74,6 +75,7 @@ class Settings:
             self.trx_baudrate = obj.get("trx_baudrate", self.trx_baudrate)
             self.trx_dtr_state = obj.get("trx_dtr_state", self.trx_dtr_state)
             self.trx_rts_state = obj.get("trx_rts_state", self.trx_rts_state)
+            self.trx_conn_type = obj.get("trx_conn_type", self.trx_conn_type)
         except FileNotFoundError:
             self.data = []
 
@@ -100,7 +102,8 @@ class Settings:
             "trx_port": self.trx_port,
             "trx_baudrate": self.trx_baudrate,
             "trx_dtr_state": self.trx_dtr_state,
-            "trx_rts_state": self.trx_rts_state
+            "trx_rts_state": self.trx_rts_state,
+            "trx_conn_type": self.trx_conn_type
         }
         print(">>> Saving to:", os.path.abspath(self.filename))
         with open(self.filename, "w") as f:
