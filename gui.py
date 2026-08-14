@@ -30,7 +30,7 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QLabel, QSlider, QVBoxLayout,
     QWidget, QListWidget, QCheckBox, QHBoxLayout, QPushButton,
     QSizePolicy, QLineEdit, QMessageBox, QComboBox, QFileDialog,
-    QGroupBox, QTabWidget, QSpinBox
+    QGroupBox, QTabWidget, QSpinBox, QButtonGroup
 )
 from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal
 from PyQt6.QtGui import QIntValidator
@@ -122,6 +122,36 @@ QPushButton#secondaryButton:hover {
 }
 QPushButton#secondaryButton:pressed {
     background-color: #cbd5e0;
+}
+QPushButton#modeSwitchLeft, QPushButton#modeSwitchRight {
+    background-color: #ffffff;
+    color: #4a5568;
+    border: 1px solid #cbd5e0;
+    border-radius: 0px;
+    padding: 8px 18px;
+    font-weight: 600;
+}
+QPushButton#modeSwitchLeft {
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+    border-right: none;
+}
+QPushButton#modeSwitchRight {
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+QPushButton#modeSwitchLeft:checked {
+    background-color: #FEF3C7;
+    color: #92400E;
+    border-color: #F5D992;
+}
+QPushButton#modeSwitchRight:checked {
+    background-color: #D1FAE5;
+    color: #065F46;
+    border-color: #86E8C2;
+}
+QPushButton#modeSwitchLeft:hover:!checked, QPushButton#modeSwitchRight:hover:!checked {
+    background-color: #f4f6f8;
 }
 QLineEdit, QComboBox, QSpinBox {
     background-color: #ffffff;
@@ -381,10 +411,38 @@ class MainWindow(QMainWindow):
         self.load_json_button.setObjectName("secondaryButton")
         self.freq_list: QListWidget = QListWidget()
 
-        # --- Setup mode checkbox ---
-        self.setup_checkbox: QCheckBox = QCheckBox("Setup mode active")
-        self.setup_checkbox.setChecked(True)
-        self.setup_checkbox.toggled.connect(self.toggle_setup_mode)
+        # --- Setup mode switch ---
+        # A two-position segmented switch instead of a checkbox whose label
+        # text changes: the current mode is legible at a glance, and the
+        # colors match the amber/green status-pill scheme used elsewhere,
+        # so the switch visually previews what the status pills will do.
+        self.setup_mode_switch: QWidget = QWidget()
+        switch_layout = QHBoxLayout()
+        switch_layout.setContentsMargins(0, 0, 0, 0)
+        switch_layout.setSpacing(0)
+
+        self._setup_mode_btn: QPushButton = QPushButton("⚙ Setup")
+        self._setup_mode_btn.setObjectName("modeSwitchLeft")
+        self._setup_mode_btn.setCheckable(True)
+        self._setup_mode_btn.setChecked(True)
+        self._setup_mode_btn.setToolTip("Manually edit L/C/high-pass values and saved frequency presets.")
+
+        self._active_mode_btn: QPushButton = QPushButton("▶ Active")
+        self._active_mode_btn.setObjectName("modeSwitchRight")
+        self._active_mode_btn.setCheckable(True)
+        self._active_mode_btn.setToolTip("Automatically apply the saved preset matching the live TRX frequency.")
+
+        self._mode_switch_group = QButtonGroup(self)
+        self._mode_switch_group.setExclusive(True)
+        self._mode_switch_group.addButton(self._setup_mode_btn)
+        self._mode_switch_group.addButton(self._active_mode_btn)
+        self._setup_mode_btn.clicked.connect(lambda: self.toggle_setup_mode(True))
+        self._active_mode_btn.clicked.connect(lambda: self.toggle_setup_mode(False))
+
+        switch_layout.addWidget(self._setup_mode_btn)
+        switch_layout.addWidget(self._active_mode_btn)
+        switch_layout.addStretch(1)
+        self.setup_mode_switch.setLayout(switch_layout)
 
         # --- L/C numeric entry, synced bidirectionally with the sliders ---
         # Keeps the original slider + live-value display, and additionally
@@ -487,7 +545,7 @@ class MainWindow(QMainWindow):
         self.advanced_widget: QWidget = QWidget()
         adv_layout = QVBoxLayout()
         adv_layout.setSpacing(8)
-        adv_layout.addWidget(self.setup_checkbox)
+        adv_layout.addWidget(self.setup_mode_switch)
 
         tab_widget = QTabWidget()
         tab_widget.addTab(connections_tab, "Connections")
@@ -812,7 +870,16 @@ class MainWindow(QMainWindow):
                   self.load_json_button, self.freq_list]:
             w.setEnabled(self.setup_mode)
 
-        self.setup_checkbox.setText("Setup mode active" if self.setup_mode else "Setup mode")
+        # Keep the switch's checked state in sync regardless of what
+        # triggered this (button click, or a future programmatic caller) -
+        # blockSignals avoids re-entering toggle_setup_mode via clicked.
+        self._setup_mode_btn.blockSignals(True)
+        self._active_mode_btn.blockSignals(True)
+        self._setup_mode_btn.setChecked(self.setup_mode)
+        self._active_mode_btn.setChecked(not self.setup_mode)
+        self._setup_mode_btn.blockSignals(False)
+        self._active_mode_btn.blockSignals(False)
+
         style = _status_style("setup" if self.setup_mode else "active")
         self.trx_status.setStyleSheet(style)
         self.tuner_status.setStyleSheet(style)
@@ -828,14 +895,14 @@ class MainWindow(QMainWindow):
         """
         if self.toggle_button_view.isChecked():
             self.advanced_widget.show()
-            self.setup_checkbox.show()
+            self.setup_mode_switch.show()
             self.toggle_button_view.setText("Reduce view")
             self.setMinimumHeight(200)
             self.setMaximumHeight(1000)
             self.resize(640, 600)
         else:
             self.advanced_widget.hide()
-            self.setup_checkbox.hide()
+            self.setup_mode_switch.hide()
             self.toggle_button_view.setText("Expand view")
             self.setFixedHeight(140)
 
