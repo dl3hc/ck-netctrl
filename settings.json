@@ -69,6 +69,6 @@
   "trx_id": 2028,
   "trx_port": "COM3",
   "trx_baudrate": 9600,
-  "trx_dtr_state": "UNSET",
-  "trx_rts_state": "UNSET"
+  "trx_dtr_state": "ON",
+  "trx_rts_state": "ON"
 }
