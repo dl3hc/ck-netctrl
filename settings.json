@@ -8,13 +8,6 @@
       "highpass": true
     },
     {
-      "min_freq": 3550000,
-      "max_freq": 3590000,
-      "L": 4,
-      "C": 167,
-      "highpass": true
-    },
-    {
       "min_freq": 7000000,
       "max_freq": 7100000,
       "L": 11,
@@ -31,8 +24,8 @@
     {
       "min_freq": 10100000,
       "max_freq": 10150000,
-      "L": 14,
-      "C": 52,
+      "L": 16,
+      "C": 45,
       "highpass": true
     },
     {
@@ -62,10 +55,20 @@
       "L": 1,
       "C": 11,
       "highpass": true
+    },
+    {
+      "min_freq": 3550000,
+      "max_freq": 3596000,
+      "L": 4,
+      "C": 167,
+      "highpass": true
     }
   ],
   "sbc_ip": "192.168.2.109",
   "sbc_port": 54123,
-  "trx_id": 2048,
-  "trx_port": "localhost:19090"
+  "trx_id": 2028,
+  "trx_port": "COM3",
+  "trx_baudrate": 9600,
+  "trx_dtr_state": "UNSET",
+  "trx_rts_state": "UNSET"
 }
