@@ -166,6 +166,8 @@ class MainWindow(QMainWindow):
 
         self.trx_connect_button: QPushButton = QPushButton("Connect TRX")
         self.trx_connect_button.clicked.connect(self.connect_trx)
+        self.trx_disconnect_button: QPushButton = QPushButton("Disconnect TRX")
+        self.trx_disconnect_button.clicked.connect(self.disconnect_trx)
 
         trx_layout = QHBoxLayout()
         trx_layout.addWidget(QLabel("TRX model"))
@@ -177,6 +179,7 @@ class MainWindow(QMainWindow):
         trx_layout.addWidget(self.trx_dtr_checkbox)
         trx_layout.addWidget(self.trx_rts_checkbox)
         trx_layout.addWidget(self.trx_connect_button)
+        trx_layout.addWidget(self.trx_disconnect_button)
 
         # --- Toggle button for view ---
         self.toggle_button_view: QPushButton = QPushButton("Reduce view")
@@ -360,6 +363,17 @@ class MainWindow(QMainWindow):
                 self.trx_check_timer.start(2000)
         else:
             self.trx_status.setText("TRX: ❌ connection failed")
+
+    def disconnect_trx(self):
+        """
+        Closes the current TRX connection (serial or netrigctl/TCP) and
+        frees the underlying port so it can be reused, e.g. by another
+        application or a new connect attempt with different settings.
+        """
+        if hasattr(self, 'trx_check_timer'):
+            self.trx_check_timer.stop()
+        self.trx_service.close()
+        self.trx_status.setText("TRX: ❌ not connected")
 
     def check_trx_connection(self):
         """
