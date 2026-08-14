@@ -46,166 +46,242 @@ from backend.trx import TRX
 from backend.utils.sbc65ec import SBC65EC
 
 
+# --- Palette: matched to openALE's "Command Deck v2 / blue-dark steel"
+# theme (see E:\\repos\\openALE\\apps\\gui\\styles.css :root tokens). Named
+# after the same CSS custom properties there, so this can be re-synced if
+# openALE's palette changes.
+_BG = "#0a0d12"          # --bg   (window background)
+_BG1 = "#0e131b"         # --bg1
+_BG2 = "#121a26"         # --bg2  (header/card surface)
+_BG3 = "#1b2534"         # --bg3  (inputs, nested surfaces)
+_BG_HOVER = "#1e2a3a"    # --bg-hover
+_BORDER = "#1b2836"      # --border
+_BORDER_MD = "#28394f"   # --border-md
+_BORDER_HI = "#3a5070"   # --border-hi
+_TX = "#c6d6e6"          # --tx        (primary text)
+_TX_MUTED = "#7089a3"    # --tx-muted
+_TX_DIM = "#516781"      # --tx-dim    (placeholders, disabled)
+_TX_BRIGHT = "#e8f4ff"   # --tx-bright (headings, primary button text)
+_ACCENT = "#4f83c4"      # --ac / --accent
+_ACCENT2 = "#6f9ad6"     # --ac2 (hover)
+_ACCENT_DIM = "#38547f"  # --ac-dim (pressed)
+# openALE's status vocabulary (--s-idle/--s-calling/--s-linked/--s-error),
+# reused for ck-netctrl's own setup/active/warning semantics below.
+_S_IDLE = "#516781"
+_S_CALLING = "#c99a45"
+_S_LINKED = "#38ac6f"
+_S_ERROR = "#df5a6b"
+
+# openALE loads Inter/JetBrains Mono from Google Fonts, which this desktop
+# app doesn't bundle and can't assume is installed - fall back to the
+# closest widely-available system equivalents.
+_SANS = '"Segoe UI", system-ui, sans-serif'
+_MONO = '"Cascadia Code", "Consolas", monospace'
+
+
+def _rgba(hex_color: str, alpha: float) -> str:
+    """Converts a #rrggbb string to an rgba(...) string for QSS."""
+    r, g, b = int(hex_color[1:3], 16), int(hex_color[3:5], 16), int(hex_color[5:7], 16)
+    return f"rgba({r}, {g}, {b}, {alpha})"
+
+
 # --- Application-wide stylesheet ---
-# A single, cohesive flat/modern theme (light background, blue accent,
-# rounded cards) applied once at the top level - Qt stylesheets cascade to
-# all child widgets, so nothing below needs its own per-widget styling
-# except the dynamic status colors (setup/active/warning), which stay as
-# small, targeted inline overrides.
-APP_STYLESHEET = """
-QMainWindow, QWidget {
-    background-color: #f4f6f8;
-    color: #1f2933;
-    font-family: "Segoe UI", sans-serif;
+# A single, cohesive dark "steel blue" theme applied once at the top level -
+# Qt stylesheets cascade to all child widgets, so nothing below needs its
+# own per-widget styling except the dynamic status colors (setup/active/
+# warning), which stay as small, targeted inline overrides.
+APP_STYLESHEET = f"""
+QMainWindow, QWidget {{
+    background-color: {_BG};
+    color: {_TX};
+    font-family: {_SANS};
     font-size: 10pt;
-}
-QGroupBox {
-    background-color: #ffffff;
-    border: 1px solid #d9dfe4;
-    border-radius: 8px;
+}}
+QGroupBox {{
+    background-color: {_BG2};
+    border: 1px solid {_BORDER};
+    border-radius: 10px;
     margin-top: 14px;
     padding: 10px 8px 8px 8px;
     font-weight: 600;
-}
-QGroupBox::title {
+}}
+QGroupBox::title {{
     subcontrol-origin: margin;
     subcontrol-position: top left;
     left: 10px;
     padding: 0 4px;
-    color: #2b6cb0;
-}
-QTabWidget::pane {
-    border: 1px solid #d9dfe4;
-    border-radius: 8px;
-    background-color: #ffffff;
+    color: {_ACCENT2};
+}}
+QTabWidget::pane {{
+    border: 1px solid {_BORDER};
+    border-radius: 10px;
+    background-color: {_BG2};
     top: -1px;
-}
-QTabBar::tab {
-    background: #e8edf2;
-    border: 1px solid #d9dfe4;
+}}
+QTabBar::tab {{
+    background: {_BG1};
+    color: {_TX_MUTED};
+    border: 1px solid {_BORDER};
     border-bottom: none;
     border-top-left-radius: 6px;
     border-top-right-radius: 6px;
     padding: 6px 16px;
     margin-right: 2px;
-}
-QTabBar::tab:selected {
-    background: #ffffff;
+}}
+QTabBar::tab:selected {{
+    background: {_BG2};
     font-weight: 600;
-    color: #2b6cb0;
-}
-QPushButton {
-    background-color: #2b6cb0;
-    color: white;
+    color: {_ACCENT2};
+}}
+QPushButton {{
+    background-color: {_ACCENT};
+    color: {_TX_BRIGHT};
     border: none;
     border-radius: 6px;
     padding: 6px 14px;
     font-weight: 600;
-}
-QPushButton:hover {
-    background-color: #2c5282;
-}
-QPushButton:pressed {
-    background-color: #1a365d;
-}
-QPushButton:disabled {
-    background-color: #a0aec0;
-    color: #edf2f7;
-}
-QPushButton#secondaryButton {
-    background-color: #edf2f7;
-    color: #2d3748;
-    border: 1px solid #cbd5e0;
-}
-QPushButton#secondaryButton:hover {
-    background-color: #e2e8f0;
-}
-QPushButton#secondaryButton:pressed {
-    background-color: #cbd5e0;
-}
-QPushButton#modeSwitchLeft, QPushButton#modeSwitchRight {
-    background-color: #ffffff;
-    color: #4a5568;
-    border: 1px solid #cbd5e0;
+}}
+QPushButton:hover {{
+    background-color: {_ACCENT2};
+}}
+QPushButton:pressed {{
+    background-color: {_ACCENT_DIM};
+}}
+QPushButton:disabled {{
+    background-color: {_BG3};
+    color: {_TX_DIM};
+}}
+QPushButton#secondaryButton {{
+    background-color: transparent;
+    color: {_TX_MUTED};
+    border: 1px solid {_BORDER_MD};
+}}
+QPushButton#secondaryButton:hover {{
+    background-color: {_BG_HOVER};
+    color: {_TX};
+    border-color: {_BORDER_HI};
+}}
+QPushButton#secondaryButton:pressed {{
+    background-color: {_BG3};
+}}
+QPushButton#modeSwitchLeft, QPushButton#modeSwitchRight {{
+    background-color: {_BG3};
+    color: {_TX_MUTED};
+    border: 1px solid {_BORDER_MD};
     border-radius: 0px;
     padding: 8px 18px;
     font-weight: 600;
-}
-QPushButton#modeSwitchLeft {
+}}
+QPushButton#modeSwitchLeft {{
     border-top-left-radius: 6px;
     border-bottom-left-radius: 6px;
     border-right: none;
-}
-QPushButton#modeSwitchRight {
+}}
+QPushButton#modeSwitchRight {{
     border-top-right-radius: 6px;
     border-bottom-right-radius: 6px;
-}
-QPushButton#modeSwitchLeft:checked {
-    background-color: #FEF3C7;
-    color: #92400E;
-    border-color: #F5D992;
-}
-QPushButton#modeSwitchRight:checked {
-    background-color: #D1FAE5;
-    color: #065F46;
-    border-color: #86E8C2;
-}
-QPushButton#modeSwitchLeft:hover:!checked, QPushButton#modeSwitchRight:hover:!checked {
-    background-color: #f4f6f8;
-}
-QLineEdit, QComboBox, QSpinBox {
-    background-color: #ffffff;
-    border: 1px solid #cbd5e0;
-    border-radius: 5px;
-    padding: 4px 6px;
-    selection-background-color: #2b6cb0;
-}
-QLineEdit:focus, QComboBox:focus, QSpinBox:focus {
-    border: 1px solid #2b6cb0;
-}
-QLineEdit:disabled, QComboBox:disabled, QSpinBox:disabled {
-    background-color: #f1f4f7;
-    color: #a0aec0;
-}
-QCheckBox {
-    spacing: 6px;
-}
-QListWidget {
-    background-color: #ffffff;
-    border: 1px solid #cbd5e0;
+}}
+QPushButton#modeSwitchLeft:checked {{
+    background-color: {_rgba(_S_CALLING, 0.16)};
+    color: {_S_CALLING};
+    border-color: {_rgba(_S_CALLING, 0.4)};
+}}
+QPushButton#modeSwitchRight:checked {{
+    background-color: {_rgba(_S_LINKED, 0.16)};
+    color: {_S_LINKED};
+    border-color: {_rgba(_S_LINKED, 0.4)};
+}}
+QPushButton#modeSwitchLeft:hover:!checked, QPushButton#modeSwitchRight:hover:!checked {{
+    background-color: {_BG_HOVER};
+}}
+QLineEdit, QComboBox, QSpinBox {{
+    background-color: {_BG3};
+    color: {_TX};
+    border: 1px solid {_BORDER};
     border-radius: 6px;
-}
-QSlider::groove:horizontal {
-    height: 6px;
-    background: #cbd5e0;
+    padding: 4px 6px;
+    selection-background-color: {_ACCENT};
+    selection-color: {_TX_BRIGHT};
+}}
+QLineEdit::placeholder {{
+    color: {_TX_DIM};
+}}
+QLineEdit:focus, QComboBox:focus, QSpinBox:focus {{
+    border: 1px solid {_ACCENT};
+}}
+QLineEdit:disabled, QComboBox:disabled, QSpinBox:disabled {{
+    background-color: {_BG1};
+    color: {_TX_DIM};
+}}
+QCheckBox {{
+    spacing: 6px;
+}}
+QCheckBox::indicator {{
+    width: 15px;
+    height: 15px;
+    border: 1px solid {_BORDER_MD};
     border-radius: 3px;
-}
-QSlider::handle:horizontal {
-    background: #2b6cb0;
+    background-color: {_BG3};
+}}
+QCheckBox::indicator:checked {{
+    background-color: {_ACCENT};
+    border-color: {_ACCENT};
+}}
+QListWidget {{
+    background-color: {_BG3};
+    color: {_TX};
+    border: 1px solid {_BORDER};
+    border-radius: 6px;
+}}
+QListWidget::item:selected {{
+    background-color: {_rgba(_ACCENT, 0.30)};
+    color: {_TX_BRIGHT};
+}}
+QSlider::groove:horizontal {{
+    height: 6px;
+    background: {_BG3};
+    border: 1px solid {_BORDER};
+    border-radius: 3px;
+}}
+QSlider::handle:horizontal {{
+    background: {_ACCENT};
     width: 16px;
     margin: -6px 0;
     border-radius: 8px;
-}
-QSlider::handle:horizontal:disabled {
-    background: #a0aec0;
-}
+}}
+QSlider::handle:horizontal:hover {{
+    background: {_ACCENT2};
+}}
+QSlider::handle:horizontal:disabled {{
+    background: {_BORDER_MD};
+}}
+QToolTip {{
+    background-color: {_BG2};
+    color: {_TX};
+    border: 1px solid {_BORDER_MD};
+    padding: 4px;
+}}
 """
 
-# Status pill colors (semantics preserved from the previous design):
-# amber = setup mode, green = active/running, red = warning (blinking).
+# Status pill colors (semantics preserved from the previous design - amber
+# = setup mode, green = active/running, red = warning (blinking) - now
+# expressed via openALE's own status vocabulary: --s-calling, --s-linked,
+# --s-error, rendered as tinted-background/colored-border/colored-text
+# pills matching openALE's .conn-status component).
 _STATUS_STYLE = (
     "background-color: {bg}; color: {fg}; font-weight: 600; "
-    "border-radius: 6px; padding: 6px 10px;"
+    "border: 1px solid {border}; border-radius: 6px; padding: 6px 10px; "
+    f"font-family: {_MONO};"
 )
-_COLOR_SETUP = ("#FEF3C7", "#92400E")
-_COLOR_ACTIVE = ("#D1FAE5", "#065F46")
-_COLOR_WARNING = ("#FEE2E2", "#991B1B")
+_COLOR_SETUP = (_rgba(_S_CALLING, 0.14), _S_CALLING, _rgba(_S_CALLING, 0.35))
+_COLOR_ACTIVE = (_rgba(_S_LINKED, 0.14), _S_LINKED, _rgba(_S_LINKED, 0.35))
+_COLOR_WARNING = (_rgba(_S_ERROR, 0.16), _S_ERROR, _rgba(_S_ERROR, 0.45))
 
 
 def _status_style(mode: str) -> str:
     """Returns the stylesheet snippet for a status pill (setup/active/warning)."""
-    bg, fg = {"setup": _COLOR_SETUP, "active": _COLOR_ACTIVE, "warning": _COLOR_WARNING}[mode]
-    return _STATUS_STYLE.format(bg=bg, fg=fg)
+    bg, fg, border = {"setup": _COLOR_SETUP, "active": _COLOR_ACTIVE, "warning": _COLOR_WARNING}[mode]
+    return _STATUS_STYLE.format(bg=bg, fg=fg, border=border)
 
 
 # --- Heartbeat Thread ---
@@ -567,6 +643,11 @@ class MainWindow(QMainWindow):
         status_layout.addLayout(status_row)
         status_layout.addWidget(self.freq_label)
         status_widget.setLayout(status_layout)
+        # Keep this whole block at its natural content height regardless of
+        # how much extra vertical space toggle_view()'s reduced/expanded
+        # window sizes leave for it - otherwise the QVBoxLayout stretches
+        # these status pills taller/shorter between the two states.
+        status_widget.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
 
         # --- Main layout ---
         layout = QVBoxLayout()
@@ -606,6 +687,12 @@ class MainWindow(QMainWindow):
         self.load_list()
         self.load_saved_meta()
         self.update_status()
+
+        # Lock the status pills to their natural (styled) height once, after
+        # the first real style/content pass above, so toggling reduced/
+        # expanded view can never stretch or squeeze them.
+        for status_label in (self.trx_status, self.tuner_status, self.freq_label):
+            status_label.setFixedHeight(status_label.sizeHint().height())
         self.resize(640, 600)
 
     # --- TRX connection ---
@@ -892,19 +979,36 @@ class MainWindow(QMainWindow):
     def toggle_view(self):
         """
         Expand or reduce the advanced view section.
+
+        Resizes the window height to fit the new content via a deferred
+        call instead of hardcoded pixel dimensions. The previous
+        setMinimumHeight()/setMaximumHeight()/resize()/setFixedHeight()
+        combination fought Qt's own layout engine on every toggle, which is
+        what caused the status pills to visibly resize instead of staying
+        put. Only the height is touched - the window's current width is
+        always preserved, since the reduced view naturally needs less
+        width than the tabs and would otherwise visibly narrow/widen the
+        window on every toggle too.
         """
-        if self.toggle_button_view.isChecked():
-            self.advanced_widget.show()
-            self.setup_mode_switch.show()
-            self.toggle_button_view.setText("Reduce view")
-            self.setMinimumHeight(200)
-            self.setMaximumHeight(1000)
-            self.resize(640, 600)
-        else:
-            self.advanced_widget.hide()
-            self.setup_mode_switch.hide()
-            self.toggle_button_view.setText("Expand view")
-            self.setFixedHeight(140)
+        expanded = self.toggle_button_view.isChecked()
+        self.advanced_widget.setVisible(expanded)
+        self.setup_mode_switch.setVisible(expanded)
+        self.toggle_button_view.setText("Reduce view" if expanded else "Expand view")
+        # Clear any leftover fixed/min/max height constraints from previous
+        # toggles before asking Qt to recompute the natural size - otherwise
+        # a stale setFixedHeight() from the last call would clamp it.
+        self.setMinimumHeight(0)
+        self.setMaximumHeight(16777215)  # QWIDGETSIZE_MAX - i.e. "unconstrained"
+        # Deferred to the next event-loop iteration so Qt has processed the
+        # show/hide geometry change before we ask for the new size hint.
+        QTimer.singleShot(0, self._settle_height)
+
+    def _settle_height(self):
+        """
+        Resizes to the layout's natural height while keeping the current
+        width untouched - see toggle_view().
+        """
+        self.resize(self.width(), self.sizeHint().height())
 
     # --- Debounce ---
     def schedule_update(self):
