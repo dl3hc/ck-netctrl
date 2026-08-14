@@ -30,10 +30,10 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QLabel, QSlider, QVBoxLayout,
     QWidget, QListWidget, QCheckBox, QHBoxLayout, QPushButton,
     QSizePolicy, QLineEdit, QMessageBox, QComboBox, QFileDialog,
-    QGroupBox, QTabWidget, QSpinBox
+    QGroupBox, QTabWidget, QSpinBox, QButtonGroup
 )
 from PyQt6.QtCore import Qt, QTimer, QThread, pyqtSignal
-from PyQt6.QtGui import QIntValidator
+from PyQt6.QtGui import QIntValidator, QFont, QPainter, QPen, QColor
 from backend.services.trx_service import TRXService
 from backend.services.tuner_service import TunerService
 from backend.services.settings_service import SettingsService
@@ -46,136 +46,277 @@ from backend.trx import TRX
 from backend.utils.sbc65ec import SBC65EC
 
 
+# --- Art Deco design tokens ---
+# Obsidian/gold luxury palette. Kept as named constants (rather than only
+# living inside the QSS string) because a few dynamic elements - status
+# pills, the corner-bracket card decoration - need the exact same colors
+# from Python code, not just from the stylesheet.
+DECO_BG = "#0A0A0A"        # obsidian black - window background
+DECO_CARD = "#141414"      # rich charcoal - card/group box background
+DECO_GOLD = "#D4AF37"      # metallic gold - primary accent, borders
+DECO_GOLD_BRIGHT = "#F2E8C4"  # brightened gold - hover/glow/alarm state
+DECO_CREAM = "#F2F0E4"     # champagne cream - primary text
+DECO_BLUE = "#1E3D59"      # midnight blue - secondary accent
+DECO_MUTED = "#888888"     # pewter - secondary/disabled text
+
+# Google Fonts named in the source design system (Marcellus/Italiana,
+# Josefin Sans) aren't bundled with this desktop app and can't be assumed
+# present on an arbitrary Windows machine, so headings/body fall back to
+# widely-available look-alikes: a classical serif for display text, and a
+# geometric-leaning sans for body copy.
+DECO_DISPLAY_FONT = "Georgia"
+DECO_BODY_FONT = "Segoe UI"
+
+
+def _tracked_font(point_size: int = 10, spacing_percent: int = 125,
+                   family: str = DECO_DISPLAY_FONT, bold: bool = True) -> QFont:
+    """
+    Builds a QFont with Art Deco-style letter tracking.
+
+    Qt Style Sheets have no letter-spacing/text-transform property (unlike
+    CSS), so the "uppercase, widely tracked" heading treatment is applied
+    programmatically via QFont instead - callers should also uppercase the
+    text they set on the widget.
+    """
+    font = QFont(family, point_size)
+    font.setLetterSpacing(QFont.SpacingType.PercentageSpacing, spacing_percent)
+    if bold:
+        font.setWeight(QFont.Weight.DemiBold)
+    return font
+
+
+class DecoGroupBox(QGroupBox):
+    """
+    QGroupBox with Art Deco corner-bracket accents.
+
+    Qt Style Sheets can't express clip-path corner cuts, so this draws two
+    small gold L-shaped brackets (top-left, bottom-right) on top of the
+    normal QSS-styled card background/border/title - the signature
+    "framed exhibit" look from the design system, done with QPainter since
+    it's outside what QSS alone can express.
+    """
+
+    _BRACKET_LEN = 16
+    _BRACKET_INSET = 5
+    _BRACKET_WIDTH = 2
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        pen = QPen(QColor(DECO_GOLD))
+        pen.setWidth(self._BRACKET_WIDTH)
+        painter.setPen(pen)
+
+        r = self.rect().adjusted(
+            self._BRACKET_INSET, self._BRACKET_INSET,
+            -self._BRACKET_INSET, -self._BRACKET_INSET
+        )
+        length = self._BRACKET_LEN
+
+        # top-left bracket
+        painter.drawLine(r.left(), r.top(), r.left() + length, r.top())
+        painter.drawLine(r.left(), r.top(), r.left(), r.top() + length)
+        # bottom-right bracket
+        painter.drawLine(r.right(), r.bottom(), r.right() - length, r.bottom())
+        painter.drawLine(r.right(), r.bottom(), r.right(), r.bottom() - length)
+        painter.end()
+
+
 # --- Application-wide stylesheet ---
-# A single, cohesive flat/modern theme (light background, blue accent,
-# rounded cards) applied once at the top level - Qt stylesheets cascade to
-# all child widgets, so nothing below needs its own per-widget styling
-# except the dynamic status colors (setup/active/warning), which stay as
-# small, targeted inline overrides.
-APP_STYLESHEET = """
-QMainWindow, QWidget {
-    background-color: #f4f6f8;
-    color: #1f2933;
-    font-family: "Segoe UI", sans-serif;
+# A single, cohesive Art Deco theme (obsidian + gold, sharp geometric
+# edges, no rounded corners) applied once at the top level - Qt
+# stylesheets cascade to all child widgets, so nothing below needs its own
+# per-widget styling except the dynamic status colors (setup/active/
+# warning), which stay as small, targeted inline overrides.
+APP_STYLESHEET = f"""
+QMainWindow, QWidget {{
+    background-color: {DECO_BG};
+    color: {DECO_CREAM};
+    font-family: "{DECO_BODY_FONT}", sans-serif;
     font-size: 10pt;
-}
-QGroupBox {
-    background-color: #ffffff;
-    border: 1px solid #d9dfe4;
-    border-radius: 8px;
-    margin-top: 14px;
-    padding: 10px 8px 8px 8px;
+}}
+QGroupBox {{
+    background-color: {DECO_CARD};
+    border: 1px solid rgba(212, 175, 55, 0.45);
+    border-radius: 0px;
+    margin-top: 18px;
+    padding: 14px 10px 10px 10px;
     font-weight: 600;
-}
-QGroupBox::title {
+}}
+QGroupBox::title {{
     subcontrol-origin: margin;
     subcontrol-position: top left;
-    left: 10px;
-    padding: 0 4px;
-    color: #2b6cb0;
-}
-QTabWidget::pane {
-    border: 1px solid #d9dfe4;
-    border-radius: 8px;
-    background-color: #ffffff;
+    left: 14px;
+    padding: 0 6px;
+    color: {DECO_GOLD};
+}}
+QTabWidget::pane {{
+    border: 1px solid rgba(212, 175, 55, 0.45);
+    border-radius: 0px;
+    background-color: {DECO_CARD};
     top: -1px;
-}
-QTabBar::tab {
-    background: #e8edf2;
-    border: 1px solid #d9dfe4;
+}}
+QTabBar::tab {{
+    background: {DECO_BG};
+    color: {DECO_MUTED};
+    border: 1px solid rgba(212, 175, 55, 0.45);
     border-bottom: none;
-    border-top-left-radius: 6px;
-    border-top-right-radius: 6px;
-    padding: 6px 16px;
+    border-radius: 0px;
+    padding: 8px 22px;
     margin-right: 2px;
-}
-QTabBar::tab:selected {
-    background: #ffffff;
+}}
+QTabBar::tab:selected {{
+    background: {DECO_CARD};
+    color: {DECO_GOLD};
+    border-bottom: 2px solid {DECO_GOLD};
+}}
+QPushButton {{
+    background-color: transparent;
+    color: {DECO_GOLD};
+    border: 2px solid {DECO_GOLD};
+    border-radius: 0px;
+    padding: 8px 16px;
     font-weight: 600;
-    color: #2b6cb0;
-}
-QPushButton {
-    background-color: #2b6cb0;
-    color: white;
+    min-height: 22px;
+}}
+QPushButton:hover {{
+    background-color: {DECO_GOLD};
+    color: {DECO_BG};
+}}
+QPushButton:pressed {{
+    background-color: {DECO_GOLD_BRIGHT};
+    border-color: {DECO_GOLD_BRIGHT};
+    color: {DECO_BG};
+}}
+QPushButton:disabled {{
+    border-color: {DECO_MUTED};
+    color: {DECO_MUTED};
+}}
+QPushButton:focus {{
+    border-color: {DECO_GOLD_BRIGHT};
+}}
+QPushButton#secondaryButton {{
+    color: {DECO_MUTED};
+    border: 1px solid {DECO_MUTED};
+}}
+QPushButton#secondaryButton:hover {{
+    background-color: {DECO_BLUE};
+    color: {DECO_CREAM};
+    border-color: {DECO_BLUE};
+}}
+QPushButton#modeSwitchLeft, QPushButton#modeSwitchRight {{
+    background-color: transparent;
+    color: {DECO_GOLD};
+    border: 1px solid {DECO_GOLD};
+    border-radius: 0px;
+    padding: 9px 18px;
+    font-weight: 600;
+    min-height: 22px;
+}}
+QPushButton#modeSwitchLeft {{
+    border-right: none;
+}}
+QPushButton#modeSwitchLeft:checked, QPushButton#modeSwitchRight:checked {{
+    background-color: {DECO_GOLD};
+    color: {DECO_BG};
+}}
+QPushButton#modeSwitchLeft:hover, QPushButton#modeSwitchRight:hover {{
+    background-color: rgba(212, 175, 55, 0.20);
+}}
+QPushButton#modeSwitchLeft:checked:hover, QPushButton#modeSwitchRight:checked:hover {{
+    background-color: {DECO_GOLD_BRIGHT};
+}}
+QLineEdit, QComboBox, QSpinBox {{
+    background-color: {DECO_BG};
+    color: {DECO_CREAM};
     border: none;
-    border-radius: 6px;
-    padding: 6px 14px;
-    font-weight: 600;
-}
-QPushButton:hover {
-    background-color: #2c5282;
-}
-QPushButton:pressed {
-    background-color: #1a365d;
-}
-QPushButton:disabled {
-    background-color: #a0aec0;
-    color: #edf2f7;
-}
-QPushButton#secondaryButton {
-    background-color: #edf2f7;
-    color: #2d3748;
-    border: 1px solid #cbd5e0;
-}
-QPushButton#secondaryButton:hover {
-    background-color: #e2e8f0;
-}
-QPushButton#secondaryButton:pressed {
-    background-color: #cbd5e0;
-}
-QLineEdit, QComboBox, QSpinBox {
-    background-color: #ffffff;
-    border: 1px solid #cbd5e0;
-    border-radius: 5px;
-    padding: 4px 6px;
-    selection-background-color: #2b6cb0;
-}
-QLineEdit:focus, QComboBox:focus, QSpinBox:focus {
-    border: 1px solid #2b6cb0;
-}
-QLineEdit:disabled, QComboBox:disabled, QSpinBox:disabled {
-    background-color: #f1f4f7;
-    color: #a0aec0;
-}
-QCheckBox {
-    spacing: 6px;
-}
-QListWidget {
-    background-color: #ffffff;
-    border: 1px solid #cbd5e0;
-    border-radius: 6px;
-}
-QSlider::groove:horizontal {
-    height: 6px;
-    background: #cbd5e0;
-    border-radius: 3px;
-}
-QSlider::handle:horizontal {
-    background: #2b6cb0;
+    border-bottom: 2px solid {DECO_GOLD};
+    border-radius: 0px;
+    padding: 5px 6px;
+    selection-background-color: {DECO_GOLD};
+    selection-color: {DECO_BG};
+}}
+QLineEdit:focus, QComboBox:focus, QSpinBox:focus {{
+    border-bottom: 2px solid {DECO_GOLD_BRIGHT};
+}}
+QLineEdit:disabled, QComboBox:disabled, QSpinBox:disabled {{
+    border-bottom: 2px solid {DECO_MUTED};
+    color: {DECO_MUTED};
+}}
+QComboBox::drop-down {{
+    border: none;
+    width: 20px;
+}}
+QCheckBox {{
+    spacing: 8px;
+}}
+QCheckBox::indicator {{
     width: 16px;
-    margin: -6px 0;
-    border-radius: 8px;
-}
-QSlider::handle:horizontal:disabled {
-    background: #a0aec0;
-}
+    height: 16px;
+    border: 1px solid {DECO_GOLD};
+    background-color: {DECO_BG};
+}}
+QCheckBox::indicator:checked {{
+    background-color: {DECO_GOLD};
+}}
+QCheckBox:disabled {{
+    color: {DECO_MUTED};
+}}
+QListWidget {{
+    background-color: {DECO_BG};
+    color: {DECO_CREAM};
+    border: 1px solid rgba(212, 175, 55, 0.45);
+    border-radius: 0px;
+}}
+QListWidget::item:selected {{
+    background-color: {DECO_GOLD};
+    color: {DECO_BG};
+}}
+QSlider::groove:horizontal {{
+    height: 3px;
+    background: {DECO_MUTED};
+}}
+QSlider::handle:horizontal {{
+    background: {DECO_GOLD};
+    width: 14px;
+    height: 18px;
+    margin: -8px 0;
+    border-radius: 0px;
+}}
+QSlider::handle:horizontal:hover {{
+    background: {DECO_GOLD_BRIGHT};
+}}
+QSlider::handle:horizontal:disabled {{
+    background: {DECO_MUTED};
+}}
+QToolTip {{
+    background-color: {DECO_CARD};
+    color: {DECO_GOLD};
+    border: 1px solid {DECO_GOLD};
+    padding: 4px;
+}}
 """
 
-# Status pill colors (semantics preserved from the previous design):
-# amber = setup mode, green = active/running, red = warning (blinking).
+# Status pill styling (semantics preserved from the previous design, but
+# re-expressed through the Art Deco palette rather than a traffic-light
+# amber/green/red scheme):
+# - "setup" recedes: charcoal card, dim gold border, cream text.
+# - "active" is the spotlight state: solid gold fill, near-black text.
+# - "warning" blinks between the normal mode style and a bright gold glow.
 _STATUS_STYLE = (
     "background-color: {bg}; color: {fg}; font-weight: 600; "
-    "border-radius: 6px; padding: 6px 10px;"
+    "border: 1px solid {border}; border-radius: 0px; padding: 7px 12px;"
 )
-_COLOR_SETUP = ("#FEF3C7", "#92400E")
-_COLOR_ACTIVE = ("#D1FAE5", "#065F46")
-_COLOR_WARNING = ("#FEE2E2", "#991B1B")
+_COLOR_SETUP = (DECO_CARD, DECO_CREAM, "rgba(212, 175, 55, 0.45)")
+_COLOR_ACTIVE = (DECO_GOLD, DECO_BG, DECO_GOLD)
+_COLOR_WARNING = (DECO_GOLD_BRIGHT, DECO_BG, DECO_GOLD_BRIGHT)
 
 
 def _status_style(mode: str) -> str:
     """Returns the stylesheet snippet for a status pill (setup/active/warning)."""
-    bg, fg = {"setup": _COLOR_SETUP, "active": _COLOR_ACTIVE, "warning": _COLOR_WARNING}[mode]
-    return _STATUS_STYLE.format(bg=bg, fg=fg)
+    bg, fg, border = {"setup": _COLOR_SETUP, "active": _COLOR_ACTIVE, "warning": _COLOR_WARNING}[mode]
+    return _STATUS_STYLE.format(bg=bg, fg=fg, border=border)
 
 
 # --- Heartbeat Thread ---
@@ -310,9 +451,11 @@ class MainWindow(QMainWindow):
             "TS-480, to power the serial interface."
         )
 
-        self.trx_connect_button: QPushButton = QPushButton("Connect TRX")
+        self.trx_connect_button: QPushButton = QPushButton("CONNECT TRX")
+        self.trx_connect_button.setFont(_tracked_font(9, 110))
         self.trx_connect_button.clicked.connect(self.connect_trx)
-        self.trx_disconnect_button: QPushButton = QPushButton("Disconnect TRX")
+        self.trx_disconnect_button: QPushButton = QPushButton("DISCONNECT")
+        self.trx_disconnect_button.setFont(_tracked_font(9, 110))
         self.trx_disconnect_button.setObjectName("secondaryButton")
         self.trx_disconnect_button.clicked.connect(self.disconnect_trx)
 
@@ -352,7 +495,8 @@ class MainWindow(QMainWindow):
         trx_button_layout.addWidget(self.trx_connect_button)
         trx_button_layout.addWidget(self.trx_disconnect_button)
 
-        trx_group = QGroupBox("TRX Connection")
+        trx_group = DecoGroupBox("TRX CONNECTION")
+        trx_group.setFont(_tracked_font(10, 130))
         trx_group_layout = QVBoxLayout()
         trx_group_layout.addLayout(conn_type_layout)
         trx_group_layout.addWidget(self.trx_model_row)
@@ -360,9 +504,16 @@ class MainWindow(QMainWindow):
         trx_group_layout.addWidget(self.trx_serial_extra_row)
         trx_group_layout.addLayout(trx_button_layout)
         trx_group.setLayout(trx_group_layout)
+        # Pin the card to the height of its tallest state (all rows shown,
+        # i.e. serial mode - the default at construction time) so toggling
+        # Serial/Network only reflows content within a stable card height
+        # instead of visibly resizing the card (and the window) on every
+        # connection-type change.
+        trx_group.setMinimumHeight(trx_group.sizeHint().height())
 
         # --- Toggle button for view ---
-        self.toggle_button_view: QPushButton = QPushButton("Reduce view")
+        self.toggle_button_view: QPushButton = QPushButton("▲  REDUCE VIEW")
+        self.toggle_button_view.setFont(_tracked_font(9, 110))
         self.toggle_button_view.setObjectName("secondaryButton")
         self.toggle_button_view.setCheckable(True)
         self.toggle_button_view.setChecked(True)
@@ -374,17 +525,51 @@ class MainWindow(QMainWindow):
         self.C_slider: QSlider = QSlider(Qt.Orientation.Horizontal)
         self.C_slider.setRange(0, 255)
         self.HP_checkbox: QCheckBox = QCheckBox("High-pass")
-        self.save_button: QPushButton = QPushButton("Save current values")
-        self.delete_button: QPushButton = QPushButton("Delete selected value")
+        self.save_button: QPushButton = QPushButton("SAVE CURRENT VALUES")
+        self.save_button.setFont(_tracked_font(9, 110))
+        self.delete_button: QPushButton = QPushButton("DELETE SELECTED")
+        self.delete_button.setFont(_tracked_font(9, 110))
         self.delete_button.setObjectName("secondaryButton")
-        self.load_json_button: QPushButton = QPushButton("Load values from JSON")
+        self.load_json_button: QPushButton = QPushButton("LOAD FROM JSON")
+        self.load_json_button.setFont(_tracked_font(9, 110))
         self.load_json_button.setObjectName("secondaryButton")
         self.freq_list: QListWidget = QListWidget()
 
-        # --- Setup mode checkbox ---
-        self.setup_checkbox: QCheckBox = QCheckBox("Setup mode active")
-        self.setup_checkbox.setChecked(True)
-        self.setup_checkbox.toggled.connect(self.toggle_setup_mode)
+        # --- Setup mode switch ---
+        # A two-position segmented switch (rather than a checkbox) makes the
+        # current mode legible at a glance instead of relying on reading a
+        # dynamically-changing checkbox label. Roman numerals nod to the
+        # Art Deco design language; the two buttons are mutually exclusive
+        # via a QButtonGroup so exactly one is always the "pressed" state.
+        self.setup_mode_switch: QWidget = QWidget()
+        switch_layout = QHBoxLayout()
+        switch_layout.setContentsMargins(0, 0, 0, 0)
+        switch_layout.setSpacing(0)
+
+        self._setup_mode_btn: QPushButton = QPushButton("I · SETUP")
+        self._setup_mode_btn.setObjectName("modeSwitchLeft")
+        self._setup_mode_btn.setCheckable(True)
+        self._setup_mode_btn.setChecked(True)
+        self._setup_mode_btn.setFont(_tracked_font(9, 130))
+        self._setup_mode_btn.setToolTip("Manually edit L/C/high-pass values and saved frequency presets.")
+
+        self._active_mode_btn: QPushButton = QPushButton("II · ACTIVE")
+        self._active_mode_btn.setObjectName("modeSwitchRight")
+        self._active_mode_btn.setCheckable(True)
+        self._active_mode_btn.setFont(_tracked_font(9, 130))
+        self._active_mode_btn.setToolTip("Automatically apply the saved preset matching the live TRX frequency.")
+
+        self._mode_switch_group = QButtonGroup(self)
+        self._mode_switch_group.setExclusive(True)
+        self._mode_switch_group.addButton(self._setup_mode_btn)
+        self._mode_switch_group.addButton(self._active_mode_btn)
+        self._setup_mode_btn.clicked.connect(lambda: self.toggle_setup_mode(True))
+        self._active_mode_btn.clicked.connect(lambda: self.toggle_setup_mode(False))
+
+        switch_layout.addWidget(self._setup_mode_btn)
+        switch_layout.addWidget(self._active_mode_btn)
+        switch_layout.addStretch(1)
+        self.setup_mode_switch.setLayout(switch_layout)
 
         # --- L/C numeric entry, synced bidirectionally with the sliders ---
         # Keeps the original slider + live-value display, and additionally
@@ -412,7 +597,8 @@ class MainWindow(QMainWindow):
         self.sbc_port_input: QLineEdit = QLineEdit("54123")
         self.sbc_port_input.setValidator(QIntValidator(1, 65535))
         self.sbc_port_input.setPlaceholderText("Port")
-        self.connect_button: QPushButton = QPushButton("Connect")
+        self.connect_button: QPushButton = QPushButton("CONNECT")
+        self.connect_button.setFont(_tracked_font(9, 110))
         self.connect_button.clicked.connect(self.connect_to_sbc)
 
         sbc_layout = QHBoxLayout()
@@ -422,7 +608,8 @@ class MainWindow(QMainWindow):
         sbc_layout.addWidget(self.sbc_port_input)
         sbc_layout.addWidget(self.connect_button)
 
-        sbc_group = QGroupBox("Tuner Interface (SBC65EC)")
+        sbc_group = DecoGroupBox("TUNER INTERFACE (SBC65EC)")
+        sbc_group.setFont(_tracked_font(10, 130))
         sbc_group_layout = QVBoxLayout()
         sbc_group_layout.addLayout(sbc_layout)
         sbc_group.setLayout(sbc_group_layout)
@@ -439,7 +626,8 @@ class MainWindow(QMainWindow):
         presets_tab = QWidget()
         presets_layout = QVBoxLayout()
 
-        tuning_group = QGroupBox("Tuning")
+        tuning_group = DecoGroupBox("TUNING")
+        tuning_group.setFont(_tracked_font(10, 130))
         tuning_layout = QVBoxLayout()
 
         freq_layout = QHBoxLayout()
@@ -471,7 +659,8 @@ class MainWindow(QMainWindow):
         tuning_group.setLayout(tuning_layout)
         presets_layout.addWidget(tuning_group)
 
-        list_group = QGroupBox("Saved Settings")
+        list_group = DecoGroupBox("SAVED SETTINGS")
+        list_group.setFont(_tracked_font(10, 130))
         list_layout = QVBoxLayout()
         list_button_layout = QHBoxLayout()
         list_button_layout.addWidget(self.delete_button)
@@ -487,11 +676,18 @@ class MainWindow(QMainWindow):
         self.advanced_widget: QWidget = QWidget()
         adv_layout = QVBoxLayout()
         adv_layout.setSpacing(8)
-        adv_layout.addWidget(self.setup_checkbox)
+        adv_layout.addWidget(self.setup_mode_switch)
 
         tab_widget = QTabWidget()
-        tab_widget.addTab(connections_tab, "Connections")
-        tab_widget.addTab(presets_tab, "Tuner Presets")
+        tab_widget.setFont(_tracked_font(9, 110))
+        tab_widget.addTab(connections_tab, "CONNECTIONS")
+        tab_widget.addTab(presets_tab, "TUNER PRESETS")
+        # Both tab pages are pinned to the height of the taller one, so
+        # switching tabs reflows content within a stable pane height
+        # instead of visibly resizing the window on every tab click.
+        tallest_tab_height = max(connections_tab.sizeHint().height(), presets_tab.sizeHint().height())
+        connections_tab.setMinimumHeight(tallest_tab_height)
+        presets_tab.setMinimumHeight(tallest_tab_height)
         adv_layout.addWidget(tab_widget)
 
         self.advanced_widget.setLayout(adv_layout)
@@ -510,10 +706,24 @@ class MainWindow(QMainWindow):
         status_layout.addWidget(self.freq_label)
         status_widget.setLayout(status_layout)
 
+        # --- Masthead ---
+        # A small branded header anchors the Art Deco identity, since the
+        # native OS window titlebar can't be restyled from inside the app.
+        masthead = QLabel("CHRISTIAN-KOPPLER  ·  NETWORK CONTROL")
+        masthead.setFont(_tracked_font(13, 180, bold=True))
+        masthead.setStyleSheet(f"color: {DECO_GOLD}; background: transparent;")
+        masthead.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        masthead_rule = QLabel()
+        masthead_rule.setFixedHeight(1)
+        masthead_rule.setStyleSheet(f"background-color: {DECO_GOLD}; border: none;")
+
         # --- Main layout ---
         layout = QVBoxLayout()
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setContentsMargins(14, 12, 14, 12)
         layout.setSpacing(8)
+        layout.addWidget(masthead)
+        layout.addWidget(masthead_rule)
+        layout.addSpacing(4)
         layout.addWidget(status_widget)
         layout.addWidget(self.toggle_button_view)
         layout.addWidget(self.advanced_widget)
@@ -544,11 +754,15 @@ class MainWindow(QMainWindow):
         self.status_timer.start(500)
 
         # --- Initial mode & saved settings ---
+        self.setMinimumWidth(620)
         self._apply_mode_settings()
         self.load_list()
         self.load_saved_meta()
         self.update_status()
-        self.resize(640, 600)
+        # One-time initial sizing to the natural content size. Subsequent
+        # expand/reduce toggles re-fit via adjustSize() instead of another
+        # hardcoded resize() call - see toggle_view().
+        self.adjustSize()
 
     # --- TRX connection ---
     def _on_trx_conn_type_changed(self):
@@ -812,7 +1026,16 @@ class MainWindow(QMainWindow):
                   self.load_json_button, self.freq_list]:
             w.setEnabled(self.setup_mode)
 
-        self.setup_checkbox.setText("Setup mode active" if self.setup_mode else "Setup mode")
+        # Keep the switch's checked state in sync regardless of what
+        # triggered this (button click, or a future programmatic caller) -
+        # blockSignals avoids re-entering toggle_setup_mode via clicked.
+        self._setup_mode_btn.blockSignals(True)
+        self._active_mode_btn.blockSignals(True)
+        self._setup_mode_btn.setChecked(self.setup_mode)
+        self._active_mode_btn.setChecked(not self.setup_mode)
+        self._setup_mode_btn.blockSignals(False)
+        self._active_mode_btn.blockSignals(False)
+
         style = _status_style("setup" if self.setup_mode else "active")
         self.trx_status.setStyleSheet(style)
         self.tuner_status.setStyleSheet(style)
@@ -825,19 +1048,19 @@ class MainWindow(QMainWindow):
     def toggle_view(self):
         """
         Expand or reduce the advanced view section.
+
+        Resizes the window to fit the new content via a deferred
+        adjustSize() instead of hardcoded pixel dimensions, so it adapts
+        naturally to whatever is actually visible and doesn't fight manual
+        resizing or jump to a fixed size on every toggle.
         """
-        if self.toggle_button_view.isChecked():
-            self.advanced_widget.show()
-            self.setup_checkbox.show()
-            self.toggle_button_view.setText("Reduce view")
-            self.setMinimumHeight(200)
-            self.setMaximumHeight(1000)
-            self.resize(640, 600)
-        else:
-            self.advanced_widget.hide()
-            self.setup_checkbox.hide()
-            self.toggle_button_view.setText("Expand view")
-            self.setFixedHeight(140)
+        expanded = self.toggle_button_view.isChecked()
+        self.advanced_widget.setVisible(expanded)
+        self.setup_mode_switch.setVisible(expanded)
+        self.toggle_button_view.setText("▲  REDUCE VIEW" if expanded else "▼  EXPAND VIEW")
+        # Deferred to the next event-loop iteration so Qt has processed the
+        # show/hide geometry change before we ask for the new size hint.
+        QTimer.singleShot(0, self.adjustSize)
 
     # --- Debounce ---
     def schedule_update(self):
