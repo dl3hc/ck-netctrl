@@ -143,6 +143,27 @@ class MainWindow(QMainWindow):
 
         self.trx_port_input: QLineEdit = QLineEdit("localhost:19090")
         self.trx_port_input.setPlaceholderText("Port or COM port")
+
+        # --- Serial-only settings (baud rate, DTR/RTS) ---
+        self.trx_baudrate_input: QComboBox = QComboBox()
+        self.trx_baudrate_input.setEditable(True)
+        self.trx_baudrate_input.addItems(
+            ["1200", "2400", "4800", "9600", "19200", "38400", "57600", "115200"]
+        )
+        self.trx_baudrate_input.setCurrentText("9600")
+        self.trx_baudrate_input.setToolTip("Baud rate (serial ports only)")
+
+        self.trx_dtr_checkbox: QCheckBox = QCheckBox("DTR")
+        self.trx_dtr_checkbox.setToolTip(
+            "Hold DTR line high (serial ports only). Required by some rigs, "
+            "e.g. Kenwood TS-480, to power the serial interface."
+        )
+        self.trx_rts_checkbox: QCheckBox = QCheckBox("RTS")
+        self.trx_rts_checkbox.setToolTip(
+            "Hold RTS line high (serial ports only). Required by some rigs, "
+            "e.g. Kenwood TS-480, to power the serial interface."
+        )
+
         self.trx_connect_button: QPushButton = QPushButton("Connect TRX")
         self.trx_connect_button.clicked.connect(self.connect_trx)
 
@@ -151,6 +172,10 @@ class MainWindow(QMainWindow):
         trx_layout.addWidget(self.trx_combo)
         trx_layout.addWidget(QLabel("Port"))
         trx_layout.addWidget(self.trx_port_input)
+        trx_layout.addWidget(QLabel("Baud"))
+        trx_layout.addWidget(self.trx_baudrate_input)
+        trx_layout.addWidget(self.trx_dtr_checkbox)
+        trx_layout.addWidget(self.trx_rts_checkbox)
         trx_layout.addWidget(self.trx_connect_button)
 
         # --- Toggle button for view ---
@@ -307,9 +332,26 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(self, "Error", "Please enter a port or host")
             return
 
-        connected = self.trx_service.connect(rig_id=rig_id, port=port)
+        try:
+            baudrate = int(self.trx_baudrate_input.currentText().strip())
+        except ValueError:
+            QMessageBox.warning(self, "Error", "Baud rate must be a number")
+            return
+
+        # Only forced "ON" when requested; otherwise left "UNSET" so Hamlib
+        # doesn't touch the line (matches previous behavior for rigs that
+        # don't need this).
+        dtr_state = "ON" if self.trx_dtr_checkbox.isChecked() else "UNSET"
+        rts_state = "ON" if self.trx_rts_checkbox.isChecked() else "UNSET"
+
+        connected = self.trx_service.connect(
+            rig_id=rig_id, port=port, baudrate=baudrate,
+            dtr_state=dtr_state, rts_state=rts_state
+        )
 
         if connected:
+            self.settings_service.set_trx_config(rig_id, port, baudrate, dtr_state, rts_state)
+            self.settings_service.save()
             self.trx_status.setText(f"TRX: ✅ connected ({self.trx_combo.currentText()})")
             # Ensure we have a check timer running
             if not hasattr(self, 'trx_check_timer') or not self.trx_check_timer.isActive():
@@ -637,3 +679,6 @@ class MainWindow(QMainWindow):
         if index >= 0:
             self.trx_combo.setCurrentIndex(index)
         self.trx_port_input.setText(self.settings_service.trx_port)
+        self.trx_baudrate_input.setCurrentText(str(self.settings_service.trx_baudrate))
+        self.trx_dtr_checkbox.setChecked(self.settings_service.trx_dtr_state == "ON")
+        self.trx_rts_checkbox.setChecked(self.settings_service.trx_rts_state == "ON")

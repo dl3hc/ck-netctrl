@@ -29,7 +29,8 @@ import Hamlib
 
 class TRX:
     def __init__(self, rig_id=None, port="localhost:19090", baudrate=115200,
-                 databits=8, parity='N', stopbits=1, dummy=False):
+                 databits=8, parity='None', stopbits=1,
+                 dtr_state="UNSET", rts_state="UNSET", dummy=False):
         """
         Initializes a TRX object for accessing a transceiver.
 
@@ -41,8 +42,13 @@ class TRX:
             port (str, optional): COM port or network address of the TRX. Default: "localhost:19090".
             baudrate (int, optional): Baud rate for serial connection. Default: 115200.
             databits (int, optional): Number of data bits for serial connection. Default: 8.
-            parity (str, optional): Parity for serial connection ('N', 'E', 'O'). Default: 'N'.
+            parity (str, optional): Parity for serial connection ('None', 'Odd', 'Even'). Default: 'None'.
             stopbits (int, optional): Number of stop bits for serial connection. Default: 1.
+            dtr_state (str, optional): DTR line state for serial connections
+                ("ON", "OFF" or "UNSET"). Some rigs (e.g. Kenwood TS-480) need
+                DTR held high to power the serial interface. Default: "UNSET".
+            rts_state (str, optional): RTS line state for serial connections
+                ("ON", "OFF" or "UNSET"). Default: "UNSET".
             dummy (bool, optional): Enables dummy mode without real hardware. Default: False.
 
         Attributes:
@@ -68,10 +74,16 @@ class TRX:
             
             # Serial settings only for real COM ports
             if ":" not in port:  # Network port contains ":"
-                self.rig.set_conf("baudrate", str(baudrate))
+                self.rig.set_conf("serial_speed", str(baudrate))
                 self.rig.set_conf("data_bits", str(databits))
-                self.rig.set_conf("parity", parity)
+                self.rig.set_conf("serial_parity", parity)
                 self.rig.set_conf("stop_bits", str(stopbits))
+                # Some rigs (e.g. Kenwood TS-480) need DTR/RTS held high to
+                # power the serial interface / respond at all.
+                if dtr_state != "UNSET":
+                    self.rig.set_conf("dtr_state", dtr_state)
+                if rts_state != "UNSET":
+                    self.rig.set_conf("rts_state", rts_state)
 
     @staticmethod
     def list_available_rigs():

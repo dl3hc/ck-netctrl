@@ -66,6 +66,7 @@ class SettingsService(ABC):
         pass
     
     @abstractmethod
-    def set_trx_config(self, rig_id: Optional[int], port: str) -> None:
+    def set_trx_config(self, rig_id: Optional[int], port: str, baudrate: int = 9600,
+                        dtr_state: str = "UNSET", rts_state: str = "UNSET") -> None:
         """Set TRX configuration."""
         pass

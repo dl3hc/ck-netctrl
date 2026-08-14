@@ -36,8 +36,20 @@ class TRXService(ABC):
         pass
     
     @abstractmethod
-    def connect(self, rig_id: Optional[int], port: str) -> bool:
-        """Connects to the transceiver."""
+    def connect(self, rig_id: Optional[int], port: str, baudrate: int = 9600,
+                dtr_state: str = "UNSET", rts_state: str = "UNSET") -> bool:
+        """
+        Connects to the transceiver.
+
+        Args:
+            rig_id: Hamlib rig ID.
+            port: COM port (serial) or "host:port" (network).
+            baudrate: Serial baud rate. Ignored for network ports.
+            dtr_state: DTR line state for serial ports ("ON", "OFF" or "UNSET").
+                Some rigs (e.g. Kenwood TS-480) need DTR held high to power
+                the serial interface / respond at all.
+            rts_state: RTS line state for serial ports ("ON", "OFF" or "UNSET").
+        """
         pass
     
     @abstractmethod

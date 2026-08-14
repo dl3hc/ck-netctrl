@@ -47,7 +47,8 @@ class TRXServiceImpl(TRXService):
         ]
         return rig_models
     
-    def connect(self, rig_id: Optional[int], port: str) -> bool:
+    def connect(self, rig_id: Optional[int], port: str, baudrate: int = 9600,
+                dtr_state: str = "UNSET", rts_state: str = "UNSET") -> bool:
         """Connects to the transceiver."""
         try:
             self._rig = Hamlib.Rig(rig_id if rig_id is not None else 2048)
@@ -55,10 +56,16 @@ class TRXServiceImpl(TRXService):
 
             # Serial settings only for real COM ports
             if ":" not in port:  # Network port contains ":"
-                self._rig.set_conf("baudrate", "115200")
+                self._rig.set_conf("serial_speed", str(baudrate))
                 self._rig.set_conf("data_bits", "8")
-                self._rig.set_conf("parity", "N")
+                self._rig.set_conf("serial_parity", "None")
                 self._rig.set_conf("stop_bits", "1")
+                # Some rigs (e.g. Kenwood TS-480) need DTR/RTS held high to
+                # power the serial interface / respond at all.
+                if dtr_state != "UNSET":
+                    self._rig.set_conf("dtr_state", dtr_state)
+                if rts_state != "UNSET":
+                    self._rig.set_conf("rts_state", rts_state)
 
             self._rig.open()
             self._connected = True

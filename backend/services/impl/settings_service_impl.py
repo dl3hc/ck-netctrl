@@ -39,6 +39,9 @@ class SettingsServiceImpl(SettingsService):
         self.sbc_port = 54123
         self.trx_id = None
         self.trx_port = "localhost:19090"
+        self.trx_baudrate = 9600
+        self.trx_dtr_state = "UNSET"
+        self.trx_rts_state = "UNSET"
         self.load()
     
     def load(self) -> None:
@@ -51,6 +54,9 @@ class SettingsServiceImpl(SettingsService):
             self.sbc_port = obj.get("sbc_port", self.sbc_port)
             self.trx_id = obj.get("trx_id", self.trx_id)
             self.trx_port = obj.get("trx_port", self.trx_port)
+            self.trx_baudrate = obj.get("trx_baudrate", self.trx_baudrate)
+            self.trx_dtr_state = obj.get("trx_dtr_state", self.trx_dtr_state)
+            self.trx_rts_state = obj.get("trx_rts_state", self.trx_rts_state)
         except FileNotFoundError:
             self.data = []
 
@@ -61,7 +67,10 @@ class SettingsServiceImpl(SettingsService):
             "sbc_ip": self.sbc_ip,
             "sbc_port": self.sbc_port,
             "trx_id": self.trx_id,
-            "trx_port": self.trx_port
+            "trx_port": self.trx_port,
+            "trx_baudrate": self.trx_baudrate,
+            "trx_dtr_state": self.trx_dtr_state,
+            "trx_rts_state": self.trx_rts_state
         }
         print(">>> Saving to:", os.path.abspath(self.filename))
         with open(self.filename, "w") as f:
@@ -98,7 +107,11 @@ class SettingsServiceImpl(SettingsService):
         self.sbc_ip = ip
         self.sbc_port = port
     
-    def set_trx_config(self, rig_id: int, port: str) -> None:
+    def set_trx_config(self, rig_id: int, port: str, baudrate: int = 9600,
+                        dtr_state: str = "UNSET", rts_state: str = "UNSET") -> None:
         """Set TRX configuration."""
         self.trx_id = rig_id
         self.trx_port = port
+        self.trx_baudrate = baudrate
+        self.trx_dtr_state = dtr_state
+        self.trx_rts_state = rts_state
