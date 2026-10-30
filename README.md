@@ -85,7 +85,7 @@ cd ck-netctrl
 ```bash
 python3 -m venv venv
 source venv/bin/activate  # Linux/macOS
-venv\Scripts\activate     # Windows (not tested)
+venv\Scripts\activate     # Windows
 ```
 
 ### Install Python Dependencies
